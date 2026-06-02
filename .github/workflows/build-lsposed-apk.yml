@@ -1,8 +1,3 @@
-Here is the full .github/workflows/build-lsposed-apk.yml workflow you can use to build the LSPosed Suite APK and publish it to a stable GitHub prerelease asset.
-
-Create this file at:
-
-.github/workflows/build-lsposed-apk.yml
 name: Build LSPosed APK
 
 on:
