@@ -33,6 +33,11 @@ jobs:
       - name: Make Gradle Wrapper Executable
         run: chmod +x ./android/gradlew.sh
 
+      - name: Generate Missing Gradle Wrapper JAR
+        run: |
+          cd android
+          gradle wrapper
+
       - name: Build Debug APK
         run: |
           cd android
