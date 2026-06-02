@@ -1,493 +1,361 @@
-import { PhoneMockup } from "./components/PhoneMockup";
-import { DownloadButton } from "./components/DownloadButton";
-import { GITHUB_ACTIONS_URL } from "./config/download";
-import { CURRENT_APP_VERSION, RELEASES } from "./config/version";
+import type { ReactNode } from "react";
+import { GITHUB_APK_URL, LSPOSED_APK_URL } from "./config/download";
 import {
-  POLICY_VERSION,
-  POLICY_LAST_UPDATED,
-  POLICY_SUMMARY,
-  POLICY_PRINCIPLES,
-  POLICY_ALLOWED,
-  POLICY_PROHIBITED,
-} from "./config/policy";
-import {
-  ShieldCheck,
-  Terminal,
-  Package,
-  ScrollText,
-  Settings as SettingsIcon,
-  Download,
-  Github,
-  Cpu,
-  Lock,
+  Activity,
   AlertTriangle,
-  CheckCircle2,
+  ArchiveRestore,
+  Bug,
+  Check,
+  ChevronRight,
   Code2,
-  FlaskConical,
-  GitBranch,
+  Download,
   FileText,
-  Wrench,
-  XCircle,
-  Video,
+  Globe2,
+  Home,
+  Languages,
+  Layers3,
+  ListChecks,
+  Moon,
+  PackageCheck,
+  Palette,
+  Search,
+  Settings,
+  Shield,
+  Smartphone,
+  Sparkles,
+  TerminalSquare,
 } from "lucide-react";
 
-const features = [
-  { icon: ShieldCheck, title: "Root status", body: "Detect Magisk, KernelSU or APatch by running su -c id.", addedIn: "v0.1.0" },
-  { icon: Terminal, title: "Safe root tools", body: "Reboot, recovery, bootloader, cache clear, mount status — every action gated by an explicit confirmation dialog.", addedIn: "v0.1.0" },
-  { icon: Package, title: "Local app manager", body: "Browse installed packages, search, copy package names, and optionally disable or enable apps for the current user.", addedIn: "v0.1.0" },
-  { icon: ScrollText, title: "Visible command log", body: "Every root command is recorded with timestamp, command preview, and full stdout/stderr. Clear anytime.", addedIn: "v0.1.0" },
-  { icon: SettingsIcon, title: "Ethical Stealth", body: "Instance separation, footprint controls, and stealth persistence for clear ethical workflows.", addedIn: "v0.1.0" },
-  { icon: Cpu, title: "Android 14+ native", body: "Kotlin · Jetpack Compose · Material 3 · minSdk 34. No webview.", addedIn: "v0.1.0" },
-  { icon: Lock, title: "Process Privacy Guard", body: "Per-app force-stop, background and wake-lock restrictions via cmd appops, optional pm disable-user.", addedIn: "v0.2.0" },
-  { icon: Code2, title: "Doppelganger (LSPosed)", body: "Xposed module targeting PackageManager, UserManager, ANDROID_ID, and attestation. In-app secondary user cloning.", addedIn: "v0.6.0" },
-  { icon: Video, title: "Video Test Feed", body: "LSPosed camera injection module for front/back streams. User-selected video upload with local preview.", addedIn: "v0.7.0" },
+const navItems = [
+  { label: "Home", icon: Home, active: true },
+  { label: "Modules", icon: Layers3 },
+  { label: "Repository", icon: Download },
+  { label: "Logs", icon: FileText },
+  { label: "Settings", icon: Settings },
 ];
 
-function VersionBadge({ version }: { version: string }) {
-  return (
-    <a
-      href="#changelog"
-      className="rounded border border-zinc-700 bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 font-mono"
-      title={`Added in ${version}`}
-    >
-      {version}
-    </a>
-  );
-}
+const modules = [
+  { name: "RootDeck Core", packageName: "com.rootdeck.app", state: "Enabled", scope: "3 scoped apps", color: "bg-blue-500" },
+  { name: "Video Test Feed", packageName: "com.rootdeck.app.xposed.video", state: "Needs scope", scope: "Front + Back camera test", color: "bg-cyan-400" },
+  { name: "Doppelganger", packageName: "com.rootdeck.app.xposed.clone", state: "Partial", scope: "System Framework", color: "bg-violet-500" },
+];
 
-function InternalBadge() {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded border border-amber-500/50 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-400 font-mono tracking-wide">
-      <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
-      INTERNAL USE ONLY
-    </span>
-  );
-}
+const repoCards = [
+  { title: "RootDeck LSPosed Bridge", meta: "Installed · v0.7.0", body: "Module metadata, scope checks, and safe status reporting for rooted test devices." },
+  { title: "Camera Test Harness", meta: "Prototype", body: "Explicit front/back test flow with source selection and visible activation state." },
+  { title: "Scope Audit Tools", meta: "Planned", body: "Compare requested module scopes with LSPosed Manager configuration before running tests." },
+];
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-2">{children}</div>
-  );
-}
+const settings = [
+  { icon: Globe2, label: "DNS over HTTPS", value: "Off" },
+  { icon: Languages, label: "Language", value: "System" },
+  { icon: Palette, label: "Theme color", value: "Blue" },
+  { icon: Moon, label: "Dark theme", value: "Follow system" },
+  { icon: Shield, label: "Xposed API call protection", value: "On" },
+  { icon: ArchiveRestore, label: "Backup and restore", value: "Ready" },
+];
 
-function Section({ id, children, className = "" }: { id?: string; children: React.ReactNode; className?: string }) {
-  return (
-    <section id={id} className={`relative px-6 md:px-10 py-14 md:py-20 ${className}`}>
-      <div className="max-w-5xl mx-auto">{children}</div>
-    </section>
-  );
-}
-
-function Divider() {
-  return <div className="border-t border-white/5" />;
-}
-
-function Tag({ children, variant = "default" }: { children: React.ReactNode; variant?: "default" | "green" | "amber" | "red" }) {
-  const styles = {
-    default: "border-zinc-700 bg-zinc-800/60 text-zinc-400",
-    green: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
-    amber: "border-amber-500/30 bg-amber-500/10 text-amber-400",
-    red: "border-red-500/30 bg-red-500/10 text-red-400",
+function Pill({ children, tone = "blue" }: { children: ReactNode; tone?: "blue" | "green" | "amber" | "slate" }) {
+  const tones = {
+    blue: "border-blue-400/30 bg-blue-500/10 text-blue-200",
+    green: "border-emerald-400/30 bg-emerald-500/10 text-emerald-200",
+    amber: "border-amber-400/30 bg-amber-500/10 text-amber-200",
+    slate: "border-slate-500/30 bg-slate-500/10 text-slate-300",
   };
+  return <span className={`rounded-full border px-3 py-1 text-xs font-medium ${tones[tone]}`}>{children}</span>;
+}
+
+function PhoneShell() {
   return (
-    <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-mono ${styles[variant]}`}>
+    <div className="mx-auto w-full max-w-[390px] rounded-[2.4rem] border border-slate-700 bg-slate-950 p-3 shadow-2xl shadow-blue-950/40">
+      <div className="overflow-hidden rounded-[1.8rem] border border-white/10 bg-[#101621]">
+        <div className="flex items-center justify-between bg-[#151d2b] px-5 py-4">
+          <div>
+            <div className="text-xs text-slate-400">LSPosed</div>
+            <div className="font-semibold text-white">Manager Prototype</div>
+          </div>
+          <Search className="size-5 text-slate-300" />
+        </div>
+
+        <div className="grid grid-cols-[74px_1fr] min-h-[650px]">
+          <aside className="border-r border-white/10 bg-[#121a27] px-2 py-4">
+            <div className="space-y-2">
+              {navItems.map((item) => (
+                <div key={item.label} className={`flex flex-col items-center gap-1 rounded-2xl px-2 py-3 text-[10px] ${item.active ? "bg-blue-500 text-white" : "text-slate-400"}`}>
+                  <item.icon className="size-5" />
+                  {item.label}
+                </div>
+              ))}
+            </div>
+          </aside>
+
+          <main className="space-y-4 p-4 text-white">
+            <section className="rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs uppercase tracking-widest text-emerald-200/80">Framework</div>
+                  <div className="mt-1 text-xl font-bold">Activated</div>
+                </div>
+                <div className="rounded-2xl bg-emerald-400 p-3 text-slate-950">
+                  <Check className="size-6" />
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-2xl bg-black/20 p-3"><span className="text-slate-400">API</span><br />93</div>
+                <div className="rounded-2xl bg-black/20 p-3"><span className="text-slate-400">SELinux</span><br />Loaded</div>
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="font-semibold">Modules</h3>
+                <Pill tone="green">2 enabled</Pill>
+              </div>
+              <div className="space-y-3">
+                {modules.map((module) => (
+                  <div key={module.name} className="rounded-2xl bg-slate-900/80 p-3">
+                    <div className="flex items-start gap-3">
+                      <div className={`mt-1 size-9 rounded-2xl ${module.color}`} />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium">{module.name}</div>
+                        <div className="truncate text-[11px] text-slate-500">{module.packageName}</div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <Pill tone={module.state === "Enabled" ? "green" : module.state === "Partial" ? "amber" : "slate"}>{module.state}</Pill>
+                          <Pill tone="slate">{module.scope}</Pill>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Section({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
+  return (
+    <section className="mx-auto max-w-6xl px-6 py-14 md:px-10">
+      <div className="mb-7">
+        <div className="mb-2 font-mono text-xs uppercase tracking-[0.24em] text-blue-300">{eyebrow}</div>
+        <h2 className="max-w-3xl text-3xl font-bold tracking-tight text-white md:text-5xl">{title}</h2>
+      </div>
       {children}
-    </span>
+    </section>
   );
 }
 
 export default function App() {
   return (
-    <div className="min-h-screen w-full bg-zinc-950 text-zinc-100 overflow-x-hidden">
-      {/* Subtle ambient */}
+    <div className="min-h-screen bg-[#0b1019] font-['Inter'] text-slate-100">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-60 -left-60 size-[600px] rounded-full bg-emerald-900/20 blur-3xl" />
-        <div className="absolute top-1/2 -right-60 size-[400px] rounded-full bg-zinc-800/30 blur-3xl" />
+        <div className="absolute -left-32 -top-32 size-96 rounded-full bg-blue-600/20 blur-3xl" />
+        <div className="absolute right-0 top-1/3 size-[34rem] rounded-full bg-cyan-500/10 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 size-80 rounded-full bg-violet-600/10 blur-3xl" />
       </div>
 
-      {/* Internal warning bar */}
-      <div className="bg-amber-950/60 border-b border-amber-500/20 px-6 py-2 text-center text-xs text-amber-400 font-mono">
-        ⚠ This portal is for internal developer use only. Do not share this URL externally.
-      </div>
-
-      {/* Nav */}
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-zinc-950/80 border-b border-white/5">
-        <div className="max-w-5xl mx-auto px-6 md:px-10 h-14 flex items-center justify-between">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0b1019]/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6 md:px-10">
           <div className="flex items-center gap-3">
-            <div className="size-6 rounded bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center">
-              <ShieldCheck className="size-3.5 text-black" />
+            <div className="grid size-9 place-items-center rounded-2xl bg-blue-500 text-white shadow-lg shadow-blue-500/25">
+              <Sparkles className="size-5" />
             </div>
-            <span className="font-mono text-sm text-zinc-200">rootdeck</span>
-            <Tag variant="green">{CURRENT_APP_VERSION}</Tag>
-            <InternalBadge />
+            <div>
+              <div className="font-semibold leading-tight">RootDeck × LSPosed</div>
+              <div className="text-xs text-slate-500">Manager-inspired prototype</div>
+            </div>
           </div>
-          <nav className="hidden md:flex items-center gap-5 text-xs font-mono text-zinc-500">
-            <a href="#overview" className="hover:text-zinc-200">overview</a>
-            <a href="#features" className="hover:text-zinc-200">features</a>
-            <a href="#build" className="hover:text-zinc-200">build</a>
-            <a href="#policy" className="hover:text-zinc-200">policy</a>
-            <a href="#changelog" className="hover:text-zinc-200">changelog</a>
-          </nav>
-          <a
-            href={GITHUB_ACTIONS_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="hidden md:inline-flex items-center gap-1.5 rounded border border-white/10 bg-white/5 hover:bg-white/10 px-3 py-1.5 text-xs text-zinc-300"
-          >
-            <Github className="size-3.5" /> GitHub
-          </a>
+          <div className="hidden items-center gap-2 md:flex">
+            <Pill tone="green">source context extracted</Pill>
+            <Pill tone="blue">Figma Make prototype</Pill>
+          </div>
         </div>
       </header>
 
-      {/* Overview / Hero */}
-      <Section id="overview" className="pt-10 md:pt-16">
-        <div className="grid md:grid-cols-2 gap-10 items-center">
+      <main className="relative">
+        <section className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-16 md:grid-cols-[1fr_420px] md:px-10 md:py-20">
           <div>
-            <SectionLabel>project overview</SectionLabel>
-            <h1 className="tracking-tight text-zinc-100" style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", lineHeight: 1.1 }}>
-              RootDeck
+            <div className="mb-5 flex flex-wrap gap-2">
+              <Pill tone="blue">Android / Gradle source context</Pill>
+              <Pill tone="slate">No web-app execution</Pill>
+            </div>
+            <h1 className="text-5xl font-extrabold tracking-[-0.04em] text-white md:text-7xl">
+              LSPosed product flow, recreated for RootDeck.
             </h1>
-            <p className="mt-2 text-zinc-400 font-mono text-sm">
-              Android 14+ root management companion · debug build
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
+              This prototype distills the LSPosed Manager structure into a RootDeck-friendly experience: status-first home, module scope review, repository cards, verbose/module logs, and Material-style settings.
             </p>
-            <p className="mt-5 text-zinc-400 text-sm leading-relaxed max-w-lg">
-              Internal developer dashboard for the RootDeck Android app. Track feature status,
-              download debug builds, review the safety policy, and follow the changelog.
-            </p>
-
-            <div className="mt-6 rounded-lg border border-white/10 bg-zinc-900/50 divide-y divide-white/5 text-sm font-mono">
-              {[
-                ["Package", "com.rootdeck.app"],
-                ["minSdk", "34 (Android 14)"],
-                ["Build type", "debug"],
-                ["Root required", "Magisk / KernelSU / APatch"],
-                ["Policy", `v${POLICY_VERSION} · ${POLICY_LAST_UPDATED}`],
-              ].map(([k, v]) => (
-                <div key={k} className="flex gap-4 px-4 py-2">
-                  <span className="text-zinc-500 w-28 shrink-0">{k}</span>
-                  <span className="text-zinc-200">{v}</span>
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+              {["Framework status", "Module scopes", "Settings + logs"].map((item) => (
+                <div key={item} className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-300">
+                  <Check className="mb-3 size-5 text-emerald-300" />
+                  {item}
                 </div>
               ))}
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-2 items-center">
-              <DownloadButton />
+            <div className="mt-8 grid gap-4 md:grid-cols-2">
               <a
-                href={GITHUB_ACTIONS_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded border border-white/10 bg-zinc-900 hover:bg-zinc-800 px-4 py-2.5 text-sm text-zinc-300"
+                href={GITHUB_APK_URL}
+                className="group rounded-[1.75rem] border border-emerald-400/25 bg-emerald-400/10 p-5 transition hover:border-emerald-300/60 hover:bg-emerald-400/15"
               >
-                <Github className="size-4" /> CI Build
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-sm font-semibold text-emerald-100">RootDeck APK download</div>
+                    <p className="mt-2 text-sm leading-6 text-slate-400">
+                      Main RootDeck Android 14+ app build from the stable RootDeck release asset.
+                    </p>
+                  </div>
+                  <Download className="size-5 shrink-0 text-emerald-300 transition group-hover:translate-y-0.5" />
+                </div>
+                <div className="mt-4 font-mono text-xs text-emerald-200/80">rootdeck-debug.apk</div>
+              </a>
+
+              <a
+                href={LSPOSED_APK_URL}
+                className="group rounded-[1.75rem] border border-blue-400/25 bg-blue-500/10 p-5 transition hover:border-blue-300/60 hover:bg-blue-500/15"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-sm font-semibold text-blue-100">LSPosed Suite APK download</div>
+                    <p className="mt-2 text-sm leading-6 text-slate-400">
+                      Latest successful standalone LSPosed-master debug APK from the lsposed-latest release.
+                    </p>
+                  </div>
+                  <Download className="size-5 shrink-0 text-blue-300 transition group-hover:translate-y-0.5" />
+                </div>
+                <div className="mt-4 font-mono text-xs text-blue-200/80">lsposed-debug.apk</div>
               </a>
             </div>
-            <p className="mt-2 text-xs text-zinc-500 font-mono">
-              Sideload only on your own test device after reviewing source.
-            </p>
           </div>
+          <PhoneShell />
+        </section>
 
-          <div className="flex justify-center opacity-80">
-            <PhoneMockup />
-          </div>
-        </div>
-      </Section>
-
-      <Divider />
-
-      {/* Implemented features */}
-      <Section id="features">
-        <SectionLabel>implemented features</SectionLabel>
-        <h2 className="tracking-tight" style={{ fontSize: "clamp(1.3rem, 2.5vw, 1.8rem)" }}>
-          Feature inventory
-        </h2>
-        <p className="mt-2 text-sm text-zinc-500">
-          All features in the current debug build. Click version badge to see changelog.
-        </p>
-        <div className="mt-8 grid md:grid-cols-2 gap-3">
-          {features.map((f) => (
-            <div key={f.title} className="rounded-lg border border-white/[0.07] bg-zinc-900/40 p-4 flex gap-3">
-              <div className="size-8 rounded bg-zinc-800 border border-white/10 flex items-center justify-center shrink-0">
-                <f.icon className="size-4 text-emerald-400" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm text-zinc-100">{f.title}</span>
-                  <VersionBadge version={f.addedIn} />
-                </div>
-                <p className="mt-1 text-xs text-zinc-500 leading-relaxed">{f.body}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Divider />
-
-      {/* How root works internally */}
-      <Section id="how">
-        <SectionLabel>execution model</SectionLabel>
-        <h2 className="tracking-tight" style={{ fontSize: "clamp(1.3rem, 2.5vw, 1.8rem)" }}>
-          Root shell flow
-        </h2>
-        <p className="mt-2 text-sm text-zinc-500">
-          RootDeck never escalates privileges on its own — it asks the installed root manager for a shell.
-        </p>
-        <ol className="mt-6 space-y-2 max-w-2xl">
-          {[
-            ["User initiates action", "Each button shows the exact command and a risk label before anything runs."],
-            ["Confirmation dialog", "RootDeck shows a modal. No confirm → no command. No exceptions."],
-            ["su executes locally", "Root manager (Magisk / KernelSU / APatch) authorizes via its own prompt."],
-            ["Result captured", "stdout, stderr, exit code, and timestamp land in Logs tab — permanent record."],
-          ].map(([t, b], i) => (
-            <li key={t} className="flex gap-3 rounded-lg border border-white/[0.07] bg-zinc-900/40 p-4">
-              <div className="size-6 shrink-0 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-mono flex items-center justify-center">{i + 1}</div>
-              <div>
-                <div className="text-sm text-zinc-100">{t}</div>
-                <div className="text-xs text-zinc-500 mt-0.5">{b}</div>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </Section>
-
-      <Divider />
-
-      {/* Build & download */}
-      <Section id="build">
-        <SectionLabel>build & distribution</SectionLabel>
-        <h2 className="tracking-tight" style={{ fontSize: "clamp(1.3rem, 2.5vw, 1.8rem)" }}>
-          Debug build pipeline
-        </h2>
-
-        <div className="mt-6 grid md:grid-cols-2 gap-4">
-          {/* Build info */}
-          <div className="rounded-lg border border-white/[0.07] bg-zinc-900/40 p-5">
-            <div className="flex items-center gap-2 text-sm text-zinc-300 mb-3">
-              <FlaskConical className="size-4 text-emerald-400" />
-              APK artifact details
-            </div>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-xs font-mono">
-              {[
-                ["Build", "GitHub Actions"],
-                ["Workflow", "Build RootDeck APK"],
-                ["Release", "RootDeck Test APK"],
-                ["Artifact", "rootdeck-debug.apk"],
-                ["Version", CURRENT_APP_VERSION],
-              ].map(([k, v]) => (
-                <div key={k} className="contents">
-                  <dt className="text-zinc-500">{k}</dt>
-                  <dd className="text-zinc-200">{v}</dd>
-                </div>
-              ))}
-            </dl>
-            <div className="mt-4 flex gap-2">
-              <DownloadButton />
-            </div>
-          </div>
-
-          {/* Build steps */}
-          <div className="rounded-lg border border-white/[0.07] bg-zinc-900/40 p-5">
-            <div className="flex items-center gap-2 text-sm text-zinc-300 mb-3">
-              <Wrench className="size-4 text-emerald-400" />
-              Build locally
-            </div>
-            <ol className="space-y-2 text-xs text-zinc-400 list-decimal list-inside">
-              <li>Open <code className="text-emerald-400">/android</code> in Android Studio (Iguana+) or CLI.</li>
-              <li>Bootstrap Gradle: <code className="text-emerald-400 break-all">cd android && gradle wrapper --gradle-version 8.7</code></li>
-              <li>Run: <code className="text-emerald-400">bash scripts/build-debug-apk.sh</code></li>
-              <li>Output: <code className="text-emerald-400 break-all">public/downloads/rootdeck-debug.apk</code></li>
-            </ol>
-            <pre className="mt-4 rounded bg-zinc-950 border border-white/10 p-3 text-xs text-emerald-400 overflow-x-auto">
-{`$ bash scripts/build-debug-apk.sh
-
-BUILD SUCCESSFUL
-→ public/downloads/rootdeck-debug.apk`}
-            </pre>
-          </div>
-        </div>
-
-        {/* Internal dev checklist */}
-        <div className="mt-4 rounded-lg border border-white/[0.07] bg-zinc-900/40 p-5">
-          <div className="flex items-center gap-2 text-sm text-zinc-300 mb-3">
-            <CheckCircle2 className="size-4 text-emerald-400" />
-            Dev build checklist
-          </div>
-          <ul className="grid md:grid-cols-2 gap-2 text-xs text-zinc-400">
+        <Section eyebrow="source summary" title="What I found in LSPosed-master">
+          <div className="grid gap-4 md:grid-cols-3">
             {[
-              "GitHub workflow has a green checkmark",
-              "Artifact rootdeck-debug-apk exists",
-              "Release RootDeck Test APK exists",
-              "Release asset rootdeck-debug.apk exists",
-              "APK installs cleanly on Android 14+",
-              "Root Management screen can request root",
-              "Logs capture root check result",
-              "No crash on cold start",
-            ].map((item) => (
-              <li key={item} className="flex items-start gap-2">
-                <CheckCircle2 className="size-3.5 text-emerald-500/60 mt-0.5 shrink-0" />
-                <span>{item}</span>
-              </li>
+              { icon: Code2, title: "Multi-module Gradle project", body: "Top-level Android/Gradle structure includes app, core, daemon, services, hiddenapi, magisk-loader, dex2oat, and external native components." },
+              { icon: Smartphone, title: "Manager app resources", body: "The app module contains XML layouts for home, modules/app list, repository, settings, logs, about dialogs, and responsive tablet navigation." },
+              { icon: ListChecks, title: "Navigation model", body: "Main navigation centers on Home, Modules, Repository, Logs, and Settings with separate nested module/repo navigation graphs." },
+              { icon: Palette, title: "Material theming", body: "Colors, styles, night variants, custom theme overlays, icon drawables, checkable nav icons, and webview markdown themes shape the visual system." },
+              { icon: Settings, title: "Settings taxonomy", body: "Language, theme color, dark mode, pure black theme, verbose logs, Xposed API protection, shortcuts, notifications, updates, backup/restore." },
+              { icon: Bug, title: "Operational flows", body: "Verbose logs, module logs, issue reporting, update channels, repository readmes/releases, scope selection, and activation warnings." },
+            ].map((card) => (
+              <article key={card.title} className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5">
+                <card.icon className="mb-4 size-6 text-blue-300" />
+                <h3 className="font-semibold text-white">{card.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-400">{card.body}</p>
+              </article>
             ))}
-          </ul>
-        </div>
-      </Section>
-
-      <Divider />
-
-      {/* Tech stack */}
-      <Section id="tech">
-        <SectionLabel>technical reference</SectionLabel>
-        <h2 className="tracking-tight" style={{ fontSize: "clamp(1.3rem, 2.5vw, 1.8rem)" }}>
-          Stack & architecture
-        </h2>
-        <div className="mt-6 grid md:grid-cols-2 gap-3">
-          {[
-            ["Language", "Kotlin"],
-            ["UI framework", "Jetpack Compose + Material 3"],
-            ["Package", "com.rootdeck.app"],
-            ["minSdk", "34 · targetSdk 34"],
-            ["Permissions", "No INTERNET — fully local"],
-            ["Root shell", "RootShell.kt — su with timeout + stdout/stderr capture"],
-            ["State", "Compose state holders, no third-party DI"],
-            ["Build", "Gradle 8.7 · GitHub Actions CI"],
-          ].map(([k, v]) => (
-            <div key={k} className="rounded-lg border border-white/[0.07] bg-zinc-900/40 px-4 py-3 flex gap-3 font-mono text-xs">
-              <span className="text-zinc-500 w-28 shrink-0">{k}</span>
-              <span className="text-zinc-200">{v}</span>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Divider />
-
-      {/* Safety policy — single source of truth */}
-      <Section id="policy">
-        <SectionLabel>safety policy · centralized source of truth</SectionLabel>
-        <div className="flex flex-wrap items-baseline gap-3">
-          <h2 className="tracking-tight" style={{ fontSize: "clamp(1.3rem, 2.5vw, 1.8rem)" }}>
-            Policy v{POLICY_VERSION}
-          </h2>
-          <Tag variant="default">last updated {POLICY_LAST_UPDATED}</Tag>
-        </div>
-
-        <div className="mt-2 rounded border border-amber-500/20 bg-amber-950/30 p-3 text-xs text-amber-400 font-mono">
-          Source of truth: <code className="text-amber-300">src/app/config/policy.ts</code> — do not duplicate safety claims anywhere else. Android app references via <code className="text-amber-300">SafetyPolicyLink.kt</code>.
-        </div>
-
-        {/* Summary */}
-        <div className="mt-4 rounded-lg border border-white/[0.07] bg-zinc-900/40 p-5">
-          <div className="flex items-center gap-2 text-xs font-mono text-zinc-400 mb-2">
-            <FileText className="size-3.5 text-zinc-500" /> summary
           </div>
-          <p className="text-sm text-zinc-300 leading-relaxed">{POLICY_SUMMARY}</p>
-        </div>
+        </Section>
 
-        {/* Principles */}
-        <div className="mt-4">
-          <div className="text-xs font-mono text-zinc-500 mb-2">principles ({POLICY_PRINCIPLES.length})</div>
-          <div className="grid gap-2 md:grid-cols-2">
-            {POLICY_PRINCIPLES.map((p) => (
-              <div key={p.title} className="rounded-lg border border-white/[0.07] bg-zinc-900/40 p-4">
-                <div className="flex items-start gap-2">
-                  <ShieldCheck className="size-4 text-emerald-400 mt-0.5 shrink-0" />
-                  <div>
-                    <div className="text-sm text-zinc-100">{p.title}</div>
-                    <p className="mt-1 text-xs text-zinc-500 leading-relaxed">{p.body}</p>
+        <Section eyebrow="prototype flow" title="RootDeck screens adapted from LSPosed patterns">
+          <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-5">
+              <h3 className="mb-4 text-xl font-semibold">Home dashboard</h3>
+              <div className="space-y-3">
+                {[
+                  [Activity, "Framework status", "Activated · API 93 · SELinux loaded"],
+                  [PackageCheck, "Enabled modules", "RootDeck Core, Video Test Feed, Doppelganger"],
+                  [AlertTriangle, "Action required", "Select scope before camera test module can run"],
+                ].map(([Icon, title, body]) => {
+                  const TypedIcon = Icon as typeof Activity;
+                  return (
+                    <div key={title as string} className="flex items-center gap-4 rounded-3xl bg-slate-950/60 p-4">
+                      <div className="grid size-11 place-items-center rounded-2xl bg-blue-500/15 text-blue-300"><TypedIcon className="size-5" /></div>
+                      <div>
+                        <div className="font-medium text-white">{title as string}</div>
+                        <div className="text-sm text-slate-500">{body as string}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-xl font-semibold">Video Test Feed scope setup</h3>
+                <Pill tone="amber">needs review</Pill>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {[
+                  ["1", "Pick video source", "Gallery or Files content URI"],
+                  ["2", "Choose target", "Front camera or back camera test path"],
+                  ["3", "Confirm scope", "Only selected user-owned test apps"],
+                  ["4", "Read logs", "Verbose and module logs for diagnosis"],
+                ].map(([n, title, body]) => (
+                  <div key={n} className="rounded-3xl bg-slate-950/60 p-4">
+                    <div className="mb-3 grid size-8 place-items-center rounded-xl bg-blue-500 text-sm font-bold">{n}</div>
+                    <div className="font-medium text-white">{title}</div>
+                    <div className="text-sm text-slate-500">{body}</div>
                   </div>
-                </div>
+                ))}
               </div>
+            </div>
+          </div>
+        </Section>
+
+        <Section eyebrow="repository" title="Repository and release cards">
+          <div className="grid gap-4 md:grid-cols-3">
+            {repoCards.map((card) => (
+              <article key={card.title} className="rounded-[1.75rem] border border-white/10 bg-slate-950/50 p-5">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <Download className="size-5 text-blue-300" />
+                  <Pill tone="slate">{card.meta}</Pill>
+                </div>
+                <h3 className="font-semibold text-white">{card.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-400">{card.body}</p>
+                <button className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-blue-300">
+                  View details <ChevronRight className="size-4" />
+                </button>
+              </article>
             ))}
           </div>
-        </div>
+        </Section>
 
-        {/* Prohibited */}
-        <div className="mt-4">
-          <div className="text-xs font-mono text-zinc-500 mb-2">
-            prohibited — hard limits ({POLICY_PROHIBITED.length})
-          </div>
-          <div className="rounded-lg border border-red-500/20 bg-red-950/20 p-4">
-            <ul className="space-y-2">
-              {POLICY_PROHIBITED.map((item) => (
-                <li key={item} className="flex items-start gap-2 text-sm">
-                  <XCircle className="size-4 text-red-400 mt-0.5 shrink-0" />
-                  <span className="text-zinc-300">{item}</span>
-                </li>
+        <Section eyebrow="settings" title="Settings model extracted from LSPosed Manager">
+          <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-3">
+            <div className="grid gap-2 md:grid-cols-2">
+              {settings.map((setting) => (
+                <div key={setting.label} className="flex items-center justify-between rounded-3xl bg-slate-950/60 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="grid size-10 place-items-center rounded-2xl bg-white/5 text-slate-300">
+                      <setting.icon className="size-5" />
+                    </div>
+                    <div className="font-medium text-white">{setting.label}</div>
+                  </div>
+                  <div className="text-sm text-slate-500">{setting.value}</div>
+                </div>
               ))}
-            </ul>
-          </div>
-        </div>
-
-        {/* Allowed */}
-        <div className="mt-4">
-          <div className="text-xs font-mono text-zinc-500 mb-2">
-            allowed ({POLICY_ALLOWED.length} items)
-          </div>
-          <div className="rounded-lg border border-emerald-500/20 bg-emerald-950/10 p-4">
-            <ul className="grid md:grid-cols-2 gap-x-6 gap-y-2">
-              {POLICY_ALLOWED.map((item) => (
-                <li key={item} className="flex items-start gap-2 text-xs text-zinc-400">
-                  <CheckCircle2 className="size-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        <p className="mt-4 text-xs text-zinc-600 font-mono">
-          To update the policy: edit <code className="text-zinc-400">src/app/config/policy.ts</code> only.
-          The website and Android app both derive from this file.
-        </p>
-      </Section>
-
-      <Divider />
-
-      {/* Changelog */}
-      <Section id="changelog">
-        <SectionLabel>release history</SectionLabel>
-        <div className="flex items-center gap-3">
-          <h2 className="tracking-tight" style={{ fontSize: "clamp(1.3rem, 2.5vw, 1.8rem)" }}>
-            Changelog
-          </h2>
-          <Tag variant="default">version.ts</Tag>
-        </div>
-        <p className="mt-1 text-xs text-zinc-500 font-mono">
-          Add new entries to <code className="text-zinc-400">src/app/config/version.ts</code>.
-        </p>
-        <ol className="mt-6 space-y-3 max-w-3xl">
-          {RELEASES.map((r, i) => (
-            <li key={r.version} className="rounded-lg border border-white/[0.07] bg-zinc-900/40 p-5">
-              <div className="flex flex-wrap items-center gap-2 mb-3">
-                <Tag variant="green">{r.version}</Tag>
-                <span className="text-sm text-zinc-200">{r.name}</span>
-                <span className="text-xs text-zinc-500 font-mono">{r.date}</span>
-                {i === 0 && <Tag variant="amber">current</Tag>}
-              </div>
-              <ul className="space-y-1.5">
-                {r.notes.map((n) => (
-                  <li key={n} className="flex gap-2 text-xs text-zinc-400">
-                    <GitBranch className="size-3.5 text-emerald-500/60 mt-0.5 shrink-0" />
-                    <span>{n}</span>
-                  </li>
-                ))}
-              </ul>
-            </li>
-          ))}
-        </ol>
-      </Section>
-
-      <footer className="border-t border-white/5 px-6 md:px-10 py-8">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="size-5 rounded bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center">
-              <ShieldCheck className="size-3 text-black" />
             </div>
-            <span className="text-xs font-mono text-zinc-500">RootDeck {CURRENT_APP_VERSION} · internal dev portal</span>
           </div>
-          <InternalBadge />
-        </div>
-      </footer>
+        </Section>
+
+        <Section eyebrow="logs" title="Diagnostic experience">
+          <div className="rounded-[2rem] border border-white/10 bg-[#05070c] p-5 font-['JetBrains_Mono'] text-sm shadow-2xl shadow-black/30">
+            <div className="mb-4 flex items-center gap-2 text-slate-400">
+              <TerminalSquare className="size-4" /> Verbose Logs / Modules Logs
+            </div>
+            {[
+              "[20:32:47] framework: activated, api=93, selinux=loaded",
+              "[20:32:48] module: com.rootdeck.app packaged in xposed_init",
+              "[20:32:49] video-feed: source selected content://media/video/42",
+              "[20:32:50] scope: waiting for LSPosed Manager confirmation",
+            ].map((line) => (
+              <div key={line} className="border-t border-white/5 py-2 text-emerald-300">{line}</div>
+            ))}
+          </div>
+        </Section>
+
+        <footer className="border-t border-white/10 px-6 py-8 text-center text-sm text-slate-500">
+          Source context: <span className="text-slate-300">premiumcentraal-boop/Stripeprojectroot/LSPosed-master</span> · Prototype only, not a Gradle build runner.
+        </footer>
+      </main>
     </div>
   );
 }

@@ -1,1 +1,2 @@
 com.rootdeck.app.xposed.DoppelgangerXposedModule
+com.rootdeck.app.xposed.VideoInjectionXposedModule
