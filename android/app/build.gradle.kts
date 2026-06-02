@@ -56,3 +56,17 @@ dependencies {
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
+
+tasks.register("fixXposedInit") {
+    doLast {
+        val xposedInitFile = file("src/main/assets/xposed_init")
+        if (xposedInitFile.isDirectory) {
+            xposedInitFile.deleteRecursively()
+        }
+        xposedInitFile.writeText("com.rootdeck.app.xposed.DoppelgangerXposedModule\ncom.rootdeck.app.xposed.VideoInjectionXposedModule\n")
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn("fixXposedInit")
+}

@@ -53,15 +53,6 @@ val plannedBasicTools: List<PlannedBasicTool> = listOf(
         addedIn = "v0.3.0",
         icon = Icons.Outlined.Image,
     ),
-    PlannedBasicTool(
-        id = "camera-injection",
-        referenceName = "Camera Injection Configuration",
-        safeName = "Live Camera Spoof Studio",
-        subtitle = "Planned front/back virtual camera feed for streaming workflows",
-        status = PlannedToolStatus.ResearchOnly,
-        addedIn = "v0.3.0",
-        icon = Icons.Outlined.Videocam,
-    ),
 )
 
 fun plannedToolById(id: String): PlannedBasicTool? = plannedBasicTools.firstOrNull { it.id == id }
