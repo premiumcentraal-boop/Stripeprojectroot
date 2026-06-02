@@ -1,0 +1,217 @@
+Build a complete product project for an Android 14+ root dashboard app inspired by the VMOS Toolbox concept, but designed as a legitimate root-management utility for the user's own device.
+
+The project must include TWO deliverables:
+
+1. A polished public product website
+2. A real native Android app project that can be exported and built into an APK
+
+Do not only create a visual mockup. Generate actual working source code files and organize them clearly.
+
+PROJECT NAME
+Use the working name: RootDeck
+
+PRODUCT GOAL
+RootDeck is a clean Android 14+ root dashboard for advanced users who already have root access through Magisk, KernelSU, APatch, or another legitimate user-authorized root provider. The app does not exploit devices, does not bypass security, does not hide itself, and does not root phones by itself. It only manages local device tools after the user grants root permission through their existing root manager.
+
+IMPORTANT SECURITY AND ETHICS RULES
+- Do not include exploits, privilege escalation, bootloader bypasses, stealth behavior, spyware, persistence, credential access, lockscreen bypasses, FRP bypasses, Play Integrity bypasses, or anti-detection features.
+- The app must only run root commands after explicit user confirmation.
+- Every dangerous action must have a confirmation dialog.
+- Show logs transparently.
+- Include a safety disclaimer: “RootDeck requires a device that is already rooted. Use only on your own device.”
+- No background root actions without the user pressing a button.
+- No automatic deletion, no hidden services, no remote control, no data exfiltration.
+
+TECH STACK FOR ANDROID APP
+Create a native Android project, not just a webview.
+Use:
+- Kotlin
+- Jetpack Compose
+- Material 3
+- Gradle Android project structure
+- minSdk 34 for Android 14+
+- targetSdk latest stable supported by the project
+- Package name: com.rootdeck.app
+
+ANDROID PROJECT STRUCTURE
+Create an /android folder with a complete Gradle Android app project:
+
+/android
+  /app
+    /src/main
+      AndroidManifest.xml
+      /java/com/rootdeck/app
+        MainActivity.kt
+        RootShell.kt
+        RootState.kt
+        DashboardScreen.kt
+        ToolsScreen.kt
+        AppManagerScreen.kt
+        LogsScreen.kt
+        SettingsScreen.kt
+        SafetyConfirmDialog.kt
+  build.gradle.kts
+  settings.gradle.kts
+  gradle.properties
+
+The Android app must be buildable in Android Studio and from command line with:
+./gradlew assembleDebug
+
+The expected APK output path should be documented as:
+android/app/build/outputs/apk/debug/app-debug.apk
+
+ANDROID APP UI REQUIREMENTS
+Create a premium dark dashboard UI that feels like a modern VM toolbox, but original.
+
+Main navigation tabs:
+- Dashboard
+- Tools
+- Apps
+- Logs
+- Settings
+
+Dashboard screen:
+- Root status card
+- Device status card
+- Android version card
+- Root provider detection card
+- Storage card
+- CPU/RAM card
+- Last command result card
+- Big “Check Root Access” button
+
+Root check behavior:
+- Use a RootShell class that attempts to run:
+  su -c id
+- Parse the response.
+- If uid=0 appears, show “Root active”.
+- If command fails, show “Root not granted or device not rooted”.
+- Never loop root requests endlessly.
+
+Tools screen:
+Add safe root utility buttons with confirmation dialogs:
+- Reboot device
+- Reboot to recovery
+- Reboot to bootloader
+- Clear app cache for selected package
+- Mount system status check only, read-only where possible
+- Run custom command field, disabled by default until user enables “Advanced mode”
+
+Do not add destructive commands by default.
+For every root command, show:
+- command preview
+- risk label
+- confirmation button
+- log output
+
+Apps screen:
+Create a local app manager:
+- List installed apps
+- Show package name
+- Search apps
+- Open app details
+- Copy package name
+- Optional root action with confirmation: disable app for current user using pm disable-user --user 0 PACKAGE
+- Optional root action with confirmation: enable app using pm enable PACKAGE
+- Never uninstall automatically
+- Never target system-critical packages without a warning
+
+Logs screen:
+- Show root command history
+- Show timestamp
+- Show command
+- Show result
+- Add “clear logs” button with confirmation
+
+Settings screen:
+- Advanced mode toggle
+- Show command previews toggle
+- Require confirmation toggle, always on by default
+- Theme selector: dark, black, system
+- About RootDeck
+- Safety disclaimer
+
+ANDROID IMPLEMENTATION DETAILS
+Implement RootShell.kt with safe command execution:
+- A function checkRoot(): RootState
+- A function runRootCommand(command: String): CommandResult
+- Use ProcessBuilder or Runtime.getRuntime().exec with su
+- Add timeout handling
+- Capture stdout and stderr
+- Return structured results
+- Do not run commands automatically on startup except optional non-invasive root status check after user taps the button
+
+Use Compose state properly.
+Use ViewModel-like state holders if needed.
+Keep code readable and commented.
+No fake UI-only buttons. Every major button must either work or show a clear “coming soon” label.
+
+WEBSITE REQUIREMENTS
+Create a polished product landing website in the root project, separate from the Android app.
+
+Website pages/sections:
+- Hero section
+- “Root dashboard for Android 14+”
+- Product screenshots generated from the app UI
+- Feature cards
+- Safety-first explanation
+- How it works
+- Download section
+- FAQ
+- Developer notes
+- Footer
+
+Website style:
+- Premium black/dark interface
+- Neon green or electric blue root-status accents
+- Glassmorphism cards
+- Clean typography
+- Mobile responsive
+- Looks like a serious Android developer tool, not a shady hacking app
+
+Website copy:
+Hero headline:
+“RootDeck: A clean root dashboard for Android 14+”
+
+Hero subheadline:
+“Manage root status, safe tools, app controls, and command logs from one transparent dashboard. Built for users who already control their own rooted device.”
+
+CTA buttons:
+- “Download APK”
+- “View Build Instructions”
+
+Download section:
+Create a placeholder link to:
+downloads/rootdeck-debug.apk
+
+Also add instructions:
+1. Export the Android project.
+2. Open /android in Android Studio.
+3. Build debug APK with ./gradlew assembleDebug.
+4. Find the APK at android/app/build/outputs/apk/debug/app-debug.apk.
+5. Sideload only on your own device.
+
+FAQ:
+- Does RootDeck root my phone? Answer: No, it requires an already rooted device.
+- Does it bypass Android security? Answer: No.
+- Does it work without Magisk/KernelSU/APatch? Answer: Only limited non-root status features work.
+- Is it for Android 14+? Answer: Yes, the MVP targets Android 14+.
+- Is it safe? Answer: It uses confirmations, visible logs, and no hidden background root actions.
+
+DELIVERABLE QUALITY
+The final output must feel like a real product MVP:
+- Working website
+- Native Android source code
+- Clear build instructions
+- Real app architecture
+- No placeholder-only fake dashboard
+- No illegal or unsafe root bypass features
+
+After generating the first version, also create a README.md with:
+- Project overview
+- Safety disclaimer
+- Android build steps
+- APK output path
+- Feature list
+- Known limitations
+- Roadmap

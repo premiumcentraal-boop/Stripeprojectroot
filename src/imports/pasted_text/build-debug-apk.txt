@@ -1,0 +1,308 @@
+We are now at the MVP stage. Stop adding new feature ideas for now and focus on producing the first stable downloadable Android APK and a polished first test version of RootDeck.
+
+Current project status:
+
+* The Android project exists under /android.
+* It is a real Kotlin + Jetpack Compose app.
+* Root Management is the MVP centerpiece.
+* Existing files include RootModels.kt, RootShell.kt, RootRepository.kt, RootManagementScreen.kt, BasicToolsScreen.kt, MemoryMonitoringScreen.kt, ScheduledRebootScreen.kt, DashboardScreen.kt, LogsScreen.kt, SettingsScreen.kt, AppPickerScreen.kt, SafetyConfirmDialog.kt, and MainActivity.kt.
+* Build target should be:
+  cd android && ./gradlew assembleDebug
+* Expected APK output:
+  android/app/build/outputs/apk/debug/app-debug.apk
+
+MAIN GOAL
+Make the first working APK downloadable from the product website by clicking the Download APK button.
+
+Do not leave the button as a placeholder. Do not only create instructions. The project should attempt to produce an actual downloadable APK file and wire the website button to it.
+
+DELIVERABLES REQUIRED
+
+1. Stable first Android test app
+2. Real debug APK build output
+3. Product website download button connected to the APK
+4. Clear fallback build instructions if the APK cannot be generated inside the Make environment
+5. No new risky features
+6. No fake root UI
+
+APK DOWNLOAD REQUIREMENTS
+
+Create this public download path:
+
+/public/downloads/rootdeck-debug.apk
+
+After building the Android debug APK, copy:
+
+/android/app/build/outputs/apk/debug/app-debug.apk
+
+to:
+
+/public/downloads/rootdeck-debug.apk
+
+The website Download APK button must link to:
+
+/downloads/rootdeck-debug.apk
+
+The button text should be:
+
+Download RootDeck Test APK
+
+Under the button, show:
+
+Version: MVP Test Build
+Target: Android 14+
+Root requirement: Already rooted device required
+Status: Debug build for testing
+
+If the APK does not exist yet, show a clear disabled state:
+
+APK not built yet. Build with: cd android && ./gradlew assembleDebug
+
+But the preferred final state should be an actual clickable APK download.
+
+GRADLE / BUILD REQUIREMENTS
+
+Make the /android project buildable without missing files.
+
+Check and complete:
+
+* settings.gradle.kts
+* root build.gradle.kts
+* app/build.gradle.kts
+* gradle.properties
+* AndroidManifest.xml
+* MainActivity.kt
+* all Compose dependencies
+* Kotlin plugin versions
+* Android Gradle Plugin version
+* minSdk 34
+* targetSdk latest stable available in the project
+
+If possible, generate or include Gradle wrapper support:
+
+* gradlew
+* gradlew.bat
+* gradle/wrapper/gradle-wrapper.properties
+
+If the environment cannot include the wrapper jar, add a clear README note:
+“The Gradle wrapper jar must be generated locally with: gradle wrapper --gradle-version 8.7”
+
+Also add a script:
+
+/scripts/build-debug-apk.sh
+
+The script should:
+
+1. cd into /android
+2. run ./gradlew assembleDebug
+3. create /public/downloads if missing
+4. copy app-debug.apk to /public/downloads/rootdeck-debug.apk
+5. print the final APK path
+
+Script content should be real and usable.
+
+ANDROID APP POLISH REQUIREMENTS
+
+Polish the first test app instead of expanding too much.
+
+App name:
+RootDeck
+
+Package:
+com.rootdeck.app
+
+Main app screens:
+
+* Dashboard
+* Basic Tools
+* Logs
+* Settings
+
+Working MVP features:
+
+* Root Management
+* Memory Monitoring
+* Scheduled Reboot
+* Logs
+* Settings
+
+Basic Tools grid:
+Keep these tiles:
+
+* Root Management
+* Memory Monitoring
+* Scheduled Reboot
+* Process Manager
+* App Auto-Start
+* App Proxy
+* Virtual Location
+* Upload File
+
+For unfinished tools, route to PlannedToolScreen with a clean explanation. Do not make fake buttons look working.
+
+ROOT MANAGEMENT MUST BE STABLE
+
+Root Management is the first real feature.
+
+Make sure it does the following:
+
+1. User opens Root Management.
+2. User sees global root switch.
+3. User taps the switch.
+4. Safety confirmation dialog appears.
+5. After confirmation, call RootShell.checkRoot().
+6. RootShell runs: su -c id
+7. If stdout contains uid=0, show:
+   “Root active for RootDeck.”
+8. If unavailable or denied, show:
+   “Root not granted or device not rooted.”
+9. Log the result in Logs.
+10. Show installed apps list with toggles.
+11. App toggles must control only RootDeck’s internal allowlist.
+12. The app must clearly say:
+    “These toggles do not grant real Magisk, KernelSU, or APatch root permission to other apps. They only allow RootDeck to run approved actions targeting selected apps.”
+13. Add Open Root Manager button.
+14. Detect and open common root managers where possible:
+
+* com.topjohnwu.magisk
+* me.weishu.kernelsu
+* me.bmax.apatch
+
+15. If no root manager is detected, show:
+    “No supported root manager found. Manage root permission from your installed root provider.”
+
+SAFETY REQUIREMENTS
+
+Keep this app legitimate and transparent.
+
+Do not add:
+
+* exploit code
+* bootloader bypass
+* FRP bypass
+* Play Integrity bypass
+* stealth root
+* anti-detection
+* hidden background root actions
+* spyware behavior
+* credential collection
+* device identity spoofing
+* process hiding
+* root permission bypasses
+
+RootDeck must only run root commands after explicit user confirmation.
+
+Every root command must:
+
+* show command preview
+* show risk label
+* require confirmation
+* log the result
+
+SCHEDULED REBOOT SAFETY
+
+Scheduled Reboot can remain simple for MVP.
+
+Only allow:
+
+* Reboot device
+* Reboot to recovery
+* Reboot to bootloader
+
+Commands:
+
+* reboot
+* reboot recovery
+* reboot bootloader
+
+Only enable these when RootDeck root mode is active.
+Every button must show a confirmation dialog first.
+
+MEMORY MONITORING POLISH
+
+Make Memory Monitoring stable:
+
+* Show RAM usage
+* Show storage usage
+* Show CPU/process info when available
+* Add Refresh button
+* If root mode is active, allow reading /proc/meminfo with confirmation
+* Log root-enhanced reads
+
+LOGS POLISH
+
+Logs screen should show:
+
+* timestamp
+* action
+* command if applicable
+* result
+* success/failure state
+* Clear logs button with confirmation
+
+SETTINGS POLISH
+
+Settings should include:
+
+* Advanced mode toggle
+* Require confirmations toggle, on by default and cannot be disabled for dangerous commands
+* Show command previews toggle
+* Theme option
+* About RootDeck
+* Safety disclaimer
+
+WEBSITE POLISH
+
+Update the website to match the first APK release.
+
+Hero:
+RootDeck
+A clean root dashboard for Android 14+
+
+Subheadline:
+Manage root status, safe tools, app controls, and transparent command logs from one Android app. Built for users who already control their own rooted device.
+
+CTA:
+Download RootDeck Test APK
+
+Secondary CTA:
+View Build Instructions
+
+Add a “First Test Build” section:
+
+* Root Management works
+* Memory Monitoring works
+* Scheduled Reboot works with confirmations
+* Logs work
+* Settings work
+* More tools are planned
+
+Add a “Safety-first root management” section:
+Explain that RootDeck does not root devices, does not bypass Android security, and requires an already rooted phone.
+
+BUILD VERIFICATION
+
+Add a BUILD_CHECKLIST.md file with:
+
+* Android project opens in Android Studio
+* ./gradlew assembleDebug runs
+* app-debug.apk is generated
+* APK is copied to /public/downloads/rootdeck-debug.apk
+* Website Download APK button points to /downloads/rootdeck-debug.apk
+* Root Management screen opens
+* Root check asks Magisk/KernelSU/APatch for permission
+* uid=0 result shows root active
+* denied root shows safe error
+* Logs capture the result
+* No unfinished tool pretends to work
+
+FINAL TASK
+
+After making the changes, summarize exactly:
+
+1. Whether the APK was actually generated.
+2. Where the APK is located.
+3. Whether the website download button points to the APK.
+4. How to build the APK manually if needed.
+5. What is working in the first test build.
+6. What is intentionally still planned.

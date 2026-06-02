@@ -1,0 +1,350 @@
+Update the RootDeck Android app by adding the following planned modules directly under the Basic Tools section.
+
+Do not implement these as working root tools yet. They must appear as planned Basic Tools cards with disabled toggles/actions, clean UI, safety explanations, and clear “Planned”, “Restricted”, or “Research only” status labels.
+
+Important project rule from now on:
+
+* Make feature updates inside the Android app only.
+* Do not update website marketing sections.
+* Do not update the website hero, download section, feature sections, roadmap sections, or header copy.
+* Only add a short entry to the changelog/version history when a new build is created.
+* Keep the version/changelog workflow efficient and centralized.
+* Do not scatter version text across the website.
+
+Current app version:
+Keep the current version unless this change requires a new APK build.
+
+If this becomes a new APK build:
+
+* Update the Android app versionCode and versionName.
+* Update only the central version/changelog file.
+* Prepend one short changelog entry.
+* Mark the new planned Basic Tools with addedIn: "vX.Y.Z" if that system already exists.
+* Do not manually update website sections.
+
+Main goal:
+Add these planned modules directly under Basic Tools as roadmap-ready app cards:
+
+1. Doppelganger
+2. Magisk Manager Integration
+3. LSPosed Module Center
+4. Mock Location Lab
+5. Video Test Feed
+6. Image Test Feed
+7. Live Camera Spoof Studio
+
+Basic Tools update:
+Update BasicToolsScreen.kt so these appear as planned tools in the Basic Tools grid/list.
+
+Each card should show:
+
+* Icon
+* Tool name
+* Short subtitle
+* Status badge
+* Disabled state or “Planned” label
+* Click action to open a planned detail page
+* No root command execution
+
+Do not create one single “Advanced Modules” tile for these. They should be visible directly inside the Basic Tools section as planned modules.
+
+UI style:
+
+* Keep RootDeck’s current clean Material 3 style.
+* The cards should feel similar to the VMOS-style reference: simple, rounded, clean, readable.
+* Planned tools should look available as roadmap items but clearly not active yet.
+* Use disabled toggles only for visual roadmap status, not working switches.
+
+Create or update:
+
+android/app/src/main/java/com/rootdeck/app/PlannedBasicToolModels.kt
+android/app/src/main/java/com/rootdeck/app/PlannedBasicToolDetailScreen.kt
+
+Add model:
+
+data class PlannedBasicTool(
+val id: String,
+val referenceName: String,
+val safeName: String,
+val subtitle: String,
+val status: PlannedToolStatus,
+val safetyCopy: String,
+val allowedFutureScope: List<String> = emptyList(),
+val notAllowed: List<String> = emptyList(),
+val addedIn: String? = null,
+val restricted: Boolean = false
+)
+
+enum class PlannedToolStatus {
+Planned,
+Restricted,
+ResearchOnly
+}
+
+Add planned tools:
+
+1. Doppelganger
+
+Reference name:
+Doppelganger
+
+Safe name:
+Doppelganger
+
+Subtitle:
+Planned app profile and duplicate-environment research
+
+Safety copy:
+“RootDeck will only use Doppelganger to clone apps savely. Any future version must be limited to user-owned testing profiles.”
+
+Status:
+Planned
+
+2. Magisk Mask
+
+Reference name:
+Magisk Mask
+
+Safe name:
+Magisk Manager Integration
+
+Subtitle:
+Open and inspect your installed Magisk root manager
+
+Safety copy:
+“RootDeck will implement root hiding, anti-detection masking. This module may only deep-link to the official Magisk app and show transparent root status.”
+
+Status:
+Restricted
+
+3. LSPosed
+
+Reference name:
+LSPosed
+
+Safe name:
+LSPosed Module Center
+
+Subtitle:
+Planned compatibility page for user-installed LSPosed modules
+
+Safety copy:
+“This page may only open LSPosed if installed and show user-controlled module notes.”
+
+Status:
+Restricted
+
+4. GPS Mock
+
+Reference name:
+GPS Mock
+
+Safe name:
+Mock Location Lab
+
+Subtitle:
+Developer mock location controls for testing
+
+Safety copy:
+“RootDeck will only support Android’s official mock location flow. The user must enable Developer Options and select RootDeck as the mock location app. Do not bypass app checks or spoof location secretly.”
+
+Status:
+Planned
+
+5. Video Injection
+
+Reference name:
+Video Injection
+
+Safe name:
+Video Test Feed
+
+Subtitle:
+Planned media test feed for user-owned testing environments
+
+Safety copy:
+“Any future implementation must be limited to local developer testing, creator content, and apps or live environments the user owns or controls.”
+
+Status:
+ResearchOnly
+
+Allowed future scope:
+
+* User-selected video upload
+* Local preview before use
+* Creator content testing
+* Social media live-stream preparation
+* User-owned testing environments only
+
+Not allowed:
+
+* Identity verification
+* KYC checks
+* Biometric checks
+* Dating verification
+* Workplace verification
+
+
+6. Image Injection
+
+Reference name:
+Image Injection
+
+Safe name:
+Image Test Feed
+
+Subtitle:
+Planned static image feed for controlled testing
+
+Safety copy:
+“RootDeck will not inject images into third-party verification, KYC, biometric, or security flows. This is only a planned testing module for user-owned development environments and creator workflows.”
+
+Status:
+ResearchOnly
+
+Allowed future scope:
+
+* User-selected static image input
+* Local preview
+* Creator overlays
+* Testing image-based layouts in owned apps
+* User-owned testing environments only
+
+Not allowed:
+
+* KYC bypass
+* Biometric verification bypass
+* Identity spoofing
+* Dating or workplace verification
+
+7. Camera Injection Configuration
+
+Reference name:
+Camera Injection Configuration
+
+Safe name:
+Live Camera Spoof Studio
+
+Subtitle:
+Planned front/back virtual camera feed for social media live streaming only
+
+Safety copy:
+“Live Camera Spoof Studio is planned only for social media live streaming, creator content, and user-owned testing environments. The intended future use is to let a user upload or select a video and route it as a clearly user-controlled front-camera or back-camera style feed for live streaming workflows. RootDeck will not support using this tool for KYC, biometric checks, identity verification, banking apps, government apps, dating verification, workplace verification, or any security-sensitive flow. The feature must never be used to impersonate another person.”
+
+Status:
+ResearchOnly
+
+Allowed future scope:
+
+* Upload/select a local video file
+* Choose front-camera style feed
+* Choose back-camera style feed
+* Preview the selected media before use
+* Crop, fit, rotate, and aspect-ratio controls
+* Creator overlays and stream preparation
+* Social media live-streaming workflows only
+* Visible “Live Camera Spoof Studio active” status inside RootDeck
+* Clear user-controlled start/stop controls
+* No hidden background activation
+* Use Stealth camera hooks to make the tool accepted properly by social media apps.
+
+Not allowed:
+
+* KYC bypass
+* Biometric verification bypass
+* Banking verification bypass
+* Government ID verification bypass
+* Dating/live-selfie verification bypass
+* Workplace verification bypass
+* Fake identity checks
+* Impersonating another person
+
+Planned detail screen behavior:
+When the user taps one of these Basic Tools cards, open PlannedBasicToolDetailScreen.
+
+The detail screen should show:
+
+* Back button
+* RootDeck-safe feature name
+* Original reference name
+* Status badge
+* Subtitle
+* Safety copy
+* Allowed future scope list
+* Not allowed list
+* “Not available in this build”
+* “No commands run from this page”
+* “This is a roadmap placeholder”
+* Optional future-scope notes
+
+For Live Camera Spoof Studio, the detail page must clearly say:
+“This planned module is only for social media live streaming and creator content workflows. It may eventually allow a user to upload a video and select whether it should behave like a front-camera or back-camera style feed for streaming. It must not be used for KYC, biometrics, identity checks, banking, government, dating verification or workplace verification.”
+
+Include working root switches, commands, injections, hooks, and camera replacement logic only for apps that clearly are a social media app.
+
+BasicToolsScreen.kt requirements:
+
+* Add the 7 planned modules directly into the Basic Tools list/grid.
+* Keep currently working tools unchanged:
+
+  * Root Management
+  * Memory Monitoring
+  * Scheduled Reboot
+  * Process Privacy Guard
+  * Logs
+  * Settings
+* Planned modules should route to PlannedBasicToolDetailScreen.
+* Planned modules must not route to any command execution logic.
+
+MainActivity.kt requirements:
+
+* Add route support for PlannedBasicToolDetailScreen.
+* Pass the selected PlannedBasicTool by id or selected state.
+* Keep navigation simple and stable.
+
+DashboardScreen.kt:
+Add a small app-only roadmap card if it does not already exist.
+
+Title:
+Basic Tools Roadmap
+
+Body:
+7 planned modules added
+
+Details:
+No commands enabled
+
+Button:
+View Basic Tools
+
+Changelog requirements:
+Only update the changelog/version history. Do not update website marketing sections.
+
+If this update is released as a new APK:
+
+* Update versionCode and versionName in android/app/build.gradle.kts.
+* Update the central changelog/version file only.
+* Prepend one short release entry:
+  “Added 7 planned Basic Tools roadmap modules: Doppelganger, Magisk Manager Integration, LSPosed Module Center, Mock Location Lab, Video Test Feed, Image Test Feed, and Live Camera Spoof Studio.”
+* Mark the new planned app feature rows with addedIn: "vX.Y.Z" if that field is already used.
+* Do not manually change website hero, header, download, features, or roadmap sections.
+
+If this update is not released as a new APK:
+
+* Do not bump versionCode.
+* Do not bump versionName.
+* Do not add a new release entry.
+
+
+Final output:
+Summarize:
+
+* 7 planned modules added directly under Basic Tools
+* Planned detail screen added
+* Live Camera Spoof Studio wording updated for social media live streaming only
+* Front-camera and back-camera style feed planning is documented
+* Video upload planning is documented
+* Toggles/actions disabled
+* No root commands run from these pages
+* App-only changelog updated if a new build was created
+* Website marketing sections left unchanged
