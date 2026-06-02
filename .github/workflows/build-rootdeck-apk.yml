@@ -1,0 +1,108 @@
+name: Build RootDeck APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "android/**"
+      - ".github/workflows/build-rootdeck-apk.yml"
+
+permissions:
+  contents: write
+
+env:
+  APK_OUTPUT_PATH: android/app/build/outputs/apk/debug/app-debug.apk
+  APK_STAGED_PATH: public/downloads/rootdeck-debug.apk
+  RELEASE_TAG: rootdeck-test
+  RELEASE_ASSET_NAME: rootdeck-debug.apk
+
+jobs:
+  build-apk:
+    name: Build Android debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 34 packages
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Set up Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Inspect Gradle entrypoints
+        run: |
+          echo "Repository root: $PWD"
+          ls -la
+          echo "Android folder:"
+          ls -la android
+          if [ -f android/gradlew ]; then
+            echo "android/gradlew is a file and can be used."
+            chmod +x android/gradlew
+          elif [ -d android/gradlew ]; then
+            echo "android/gradlew is a directory from the Figma export. Ignoring it and using the Gradle installed by setup-gradle."
+          else
+            echo "android/gradlew is missing. Using the Gradle installed by setup-gradle."
+          fi
+
+      - name: Build debug APK
+        run: |
+          cd android
+          if [ -f ./gradlew ]; then
+            ./gradlew --no-daemon assembleDebug --stacktrace
+          else
+            gradle --no-daemon assembleDebug --stacktrace
+          fi
+
+      - name: Verify APK exists
+        run: |
+          test -f "$APK_OUTPUT_PATH"
+          ls -lh "$APK_OUTPUT_PATH"
+
+      - name: Stage APK for website download path
+        run: |
+          mkdir -p public/downloads
+          cp "$APK_OUTPUT_PATH" "$APK_STAGED_PATH"
+          ls -lh "$APK_STAGED_PATH"
+
+      - name: Upload APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rootdeck-debug-apk
+          path: ${{ env.APK_STAGED_PATH }}
+          if-no-files-found: error
+
+      - name: Publish APK to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete "$RELEASE_TAG" --yes --cleanup-tag || true
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git tag -f "$RELEASE_TAG"
+          git push origin "$RELEASE_TAG" --force
+
+          gh release create "$RELEASE_TAG" \
+            "$APK_STAGED_PATH#$RELEASE_ASSET_NAME" \
+            --title "RootDeck Test APK" \
+            --notes "Latest RootDeck Android debug test build. Built automatically with GitHub Actions from commit $GITHUB_SHA." \
+            --latest
