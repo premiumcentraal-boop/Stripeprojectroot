@@ -30,10 +30,9 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
-      - name: Clean up corrupted gradlew directory and regenerate Wrapper
+      - name: Generate Gradle Wrapper
         run: |
           cd android
-          rm -rf gradlew
           gradle wrapper
 
       - name: Make Gradle Wrapper Executable
