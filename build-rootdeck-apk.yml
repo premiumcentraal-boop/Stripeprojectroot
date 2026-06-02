@@ -30,18 +30,10 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
-      - name: Generate Gradle Wrapper
-        run: |
-          cd android
-          gradle wrapper
-
-      - name: Make Gradle Wrapper Executable
-        run: chmod +x ./android/gradlew
-
       - name: Build Debug APK
         run: |
           cd android
-          ./gradlew assembleDebug --no-daemon
+          gradle assembleDebug --no-daemon
 
       - name: Rename APK for Release
         run: |
