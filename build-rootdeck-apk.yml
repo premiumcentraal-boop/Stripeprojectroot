@@ -7,6 +7,7 @@ on:
       - master
     paths:
       - 'android/**'
+      - '.github/workflows/build-rootdeck-apk.yml'
   workflow_dispatch: # Allows manual trigger from the Actions tab
 
 jobs:
@@ -29,6 +30,11 @@ jobs:
           
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
+
+      - name: Set up Gradle 8.7
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.7'
 
       - name: Build Debug APK
         run: |
