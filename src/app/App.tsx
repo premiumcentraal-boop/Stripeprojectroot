@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { GITHUB_APK_URL, LSPOSED_APK_URL } from "./config/download";
+import { useEffect, useState, type ReactNode } from "react";
+import { GITHUB_APK_URL, LSPOSED_ACTIONS_URL, LSPOSED_APK_URL, LSPOSED_RELEASE_API_URL } from "./config/download";
 import {
   Activity,
   AlertTriangle,
@@ -63,6 +63,73 @@ function Pill({ children, tone = "blue" }: { children: ReactNode; tone?: "blue" 
     slate: "border-slate-500/30 bg-slate-500/10 text-slate-300",
   };
   return <span className={`rounded-full border px-3 py-1 text-xs font-medium ${tones[tone]}`}>{children}</span>;
+}
+
+
+type LsposedReleaseState = "checking" | "ready" | "missing";
+
+function LsposedDownloadCard() {
+  const [state, setState] = useState<LsposedReleaseState>("checking");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(LSPOSED_RELEASE_API_URL, { headers: { Accept: "application/vnd.github+json" } })
+      .then((response) => {
+        if (!response.ok) return null;
+        return response.json() as Promise<{ assets?: Array<{ name?: string }> }>;
+      })
+      .then((release) => {
+        if (cancelled) return;
+        const hasAsset = release?.assets?.some((asset) => asset.name === "lsposed-debug.apk") ?? false;
+        setState(hasAsset ? "ready" : "missing");
+      })
+      .catch(() => {
+        if (!cancelled) setState("missing");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (state === "ready") {
+    return (
+      <a
+        href={LSPOSED_APK_URL}
+        className="group rounded-[1.75rem] border border-blue-400/25 bg-blue-500/10 p-5 transition hover:border-blue-300/60 hover:bg-blue-500/15"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-sm font-semibold text-blue-100">LSPosed Suite APK download</div>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              Latest successful standalone LSPosed-master debug APK from the lsposed-latest release.
+            </p>
+          </div>
+          <Download className="size-5 shrink-0 text-blue-300 transition group-hover:translate-y-0.5" />
+        </div>
+        <div className="mt-4 font-mono text-xs text-blue-200/80">lsposed-debug.apk</div>
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href={LSPOSED_ACTIONS_URL}
+      className="group rounded-[1.75rem] border border-amber-400/25 bg-amber-500/10 p-5 transition hover:border-amber-300/60 hover:bg-amber-500/15"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="text-sm font-semibold text-amber-100">LSPosed Suite APK not published yet</div>
+          <p className="mt-2 text-sm leading-6 text-slate-400">
+            {state === "checking"
+              ? "Checking the lsposed-latest release for lsposed-debug.apk before opening a download."
+              : "Run the Build LSPosed APK workflow once. After it succeeds, this card becomes the direct APK download."}
+          </p>
+        </div>
+        <Download className="size-5 shrink-0 text-amber-300 transition group-hover:translate-y-0.5" />
+      </div>
+      <div className="mt-4 font-mono text-xs text-amber-200/80">Open Build LSPosed APK workflow</div>
+    </a>
+  );
 }
 
 function PhoneShell() {
@@ -214,21 +281,7 @@ export default function App() {
                 <div className="mt-4 font-mono text-xs text-emerald-200/80">rootdeck-debug.apk</div>
               </a>
 
-              <a
-                href={LSPOSED_APK_URL}
-                className="group rounded-[1.75rem] border border-blue-400/25 bg-blue-500/10 p-5 transition hover:border-blue-300/60 hover:bg-blue-500/15"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-sm font-semibold text-blue-100">LSPosed Suite APK download</div>
-                    <p className="mt-2 text-sm leading-6 text-slate-400">
-                      Latest successful standalone LSPosed-master debug APK from the lsposed-latest release.
-                    </p>
-                  </div>
-                  <Download className="size-5 shrink-0 text-blue-300 transition group-hover:translate-y-0.5" />
-                </div>
-                <div className="mt-4 font-mono text-xs text-blue-200/80">lsposed-debug.apk</div>
-              </a>
+              <LsposedDownloadCard />
             </div>
           </div>
           <PhoneShell />

@@ -4,6 +4,9 @@ export const GITHUB_APK_URL =
 export const LSPOSED_APK_URL =
   "https://github.com/premiumcentraal-boop/Stripeprojectroot/releases/download/lsposed-latest/lsposed-debug.apk";
 
+export const LSPOSED_RELEASE_API_URL =
+  "https://api.github.com/repos/premiumcentraal-boop/Stripeprojectroot/releases/tags/lsposed-latest";
+
 export const GITHUB_ACTIONS_URL =
   "https://github.com/premiumcentraal-boop/Stripeprojectroot/actions/workflows/build-rootdeck-apk.yml";
 
