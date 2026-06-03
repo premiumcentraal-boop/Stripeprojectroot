@@ -6,7 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.hardware.camera2.CameraCharacteristics
-import android.view.TextureView
+import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -36,7 +37,7 @@ private const val VIDEO_MODULE_CLASS = "com.rootdeck.app.xposed.VideoInjectionXp
 private const val VIDEO_FEED_PREFS = "rootdeck_video_feed_setup"
 
 @Composable
-fun VideoTestFeedScreen(onBack: () -> Unit) {
+fun VideoTestFeedScreen(onBack: () -> Unit, onOpenVectorSetup: () -> Unit = {}) {
     val context = LocalContext.current
     var selectedVideoUri by remember { mutableStateOf<Uri?>(null) }
     var selectedVideoLabel by remember { mutableStateOf<String?>(null) }
@@ -51,15 +52,15 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
     var hasCameraPermission by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
     }
-    val previewCameraController = remember { SandboxCameraController() }
-    DisposableEffect(previewMode, previewLensFacing) {
-        onDispose { previewCameraController.close() }
-    }
     val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         hasCameraPermission = granted
     }
     val repeatPlayback = true
     var lsposedStatus by remember { mutableStateOf(readLsposedStatus(context)) }
+    var vectorInstallStatus by remember { mutableStateOf<VectorInstallStatus?>(null) }
+    var vectorInstallAsset by remember { mutableStateOf<VectorInstallAsset?>(null) }
+    var vectorCheckError by remember { mutableStateOf<String?>(null) }
+    var vectorRefreshKey by remember { mutableStateOf(0) }
 
     fun setSelectedVideo(uri: Uri?) {
         selectedVideoUri = uri
@@ -88,6 +89,16 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
         setSelectedVideo(uri)
     }
 
+    fun openAndroidCameraApp() {
+        val intent = Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        runCatching { context.startActivity(intent) }
+            .onFailure {
+                runCatching { context.startActivity(Intent(MediaStore.ACTION_IMAGE_CAPTURE)) }
+            }
+    }
+
     fun saveVideoFeedSetup() {
         context.getSharedPreferences(VIDEO_FEED_PREFS, Context.MODE_PRIVATE)
             .edit()
@@ -108,7 +119,17 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
             .putLong("last_test_run_started_at", System.currentTimeMillis())
             .putBoolean("test_run_requested", true)
             .apply()
-        testRunStatus = "Test run prepared. Now open your own LSPosed-scoped camera test app after confirming RootDeck is enabled in LSPosed. The video is saved with repeat playback always on."
+        testRunStatus = "Test run prepared. Now open your own Vector / LSPosed-scoped camera test app after confirming RootDeck is enabled in Vector / LSPosed. The video is saved with repeat playback always on."
+    }
+
+    LaunchedEffect(vectorRefreshKey) {
+        vectorInstallStatus = null
+        vectorInstallAsset = null
+        vectorCheckError = null
+        vectorInstallStatus = VectorInstallChecker.check()
+        VectorReleaseFinder.findLatestRecommended()
+            .onSuccess { vectorInstallAsset = it }
+            .onFailure { vectorCheckError = it.message ?: "Could not fetch the latest Vector release." }
     }
 
     LaunchedEffect(selectedVideoUri, targetCamera, fitMode, cropAnchor, outputSize) {
@@ -127,18 +148,48 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
         
         Text("Video Test Feed", style = MaterialTheme.typography.headlineSmall)
         Text(
-            "Friendly LSPosed-linked setup for streaming a selected video file into your own front/back camera test flow.",
+            "Friendly Vector / LSPosed-linked setup for streaming a selected video file into your own front/back camera test flow.",
             style = MaterialTheme.typography.bodySmall,
         )
         SafetyPolicyLink()
 
+        VectorVideoSetupStatusCard(
+            status = vectorInstallStatus,
+            asset = vectorInstallAsset,
+            error = vectorCheckError,
+            onRefresh = { vectorRefreshKey++ },
+            onOpenVectorSetup = onOpenVectorSetup,
+        )
+
+
         ElevatedCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Setup guide", style = MaterialTheme.typography.titleSmall)
-                Text("1. Install LSPosed with the guided installer and reboot.", style = MaterialTheme.typography.bodySmall)
-                Text("2. Enable the RootDeck module in LSPosed and scope it only to your own test apps.", style = MaterialTheme.typography.bodySmall)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Video injection status", style = MaterialTheme.typography.titleSmall)
+                }
+                val injectionReady = lsposedStatus.managerInstalled && lsposedStatus.moduleEntryPackaged && setupSaved && selectedVideoUri != null
+                StatusRow("Vector / LSPosed API", if (lsposedStatus.managerInstalled) "Positive — Vector / LSPosed Manager detected" else "Not detected")
+                StatusRow("RootDeck module", if (lsposedStatus.moduleEntryPackaged) "Packaged" else "Not connected")
+                StatusRow("Video setup", if (setupSaved && selectedVideoUri != null) "Saved" else "Not saved yet")
+                StatusRow("Video injection", if (injectionReady) "Enabled for RootDeck internal sandbox" else "Not properly connected yet")
+                Text(
+                    if (injectionReady) "RootDeck has the Vector / LSPosed module entry and a saved video source. Use Test video feed for the internal looping preview, or open Android Camera for the real device camera."
+                    else "Complete Vector / LSPosed setup, select a video, and save the setup before testing injection status.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        ElevatedCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Vector / LSPosed setup", style = MaterialTheme.typography.titleSmall)
+                Text("1. Install Vector with the guided setup and reboot.", style = MaterialTheme.typography.bodySmall)
+                Text("2. Enable the RootDeck module in Vector / LSPosed and scope it only to your own test apps.", style = MaterialTheme.typography.bodySmall)
                 Text("3. Pick a video file here, choose Front or Back camera, then run your test app.", style = MaterialTheme.typography.bodySmall)
-                StatusRow("LSPosed Manager", if (lsposedStatus.managerInstalled) "Detected" else "Open LSPosed after reboot")
+                StatusRow("Vector / LSPosed Manager", if (lsposedStatus.managerInstalled) "Detected" else "Open Vector / LSPosed after reboot")
                 StatusRow("RootDeck module entry", if (lsposedStatus.moduleEntryPackaged) "Packaged" else "Missing")
                 StatusRow("Video file", if (selectedVideoUri != null) "Selected" else "Choose Gallery or Files")
                 StatusRow("Camera target", targetCamera)
@@ -146,7 +197,7 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
                 StatusRow("Crop / bars", fitMode.editingSummary(cropAnchor))
                 StatusRow("Output size", outputSize.label)
                 StatusRow("Repeat playback", if (repeatPlayback) "Always on" else "Off")
-                StatusRow("Editor setup", if (setupSaved) "Saved for LSPosed test flow" else "Review and save below")
+                StatusRow("Editor setup", if (setupSaved) "Saved for Vector / LSPosed test flow" else "Review and save below")
             }
         }
 
@@ -263,7 +314,7 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
                     Text("3. Fit Video to Camera Size", style = MaterialTheme.typography.titleSmall)
                 }
                 Text(
-                    "Choose how RootDeck should prepare videos that do not match the camera shape. RootDeck saves this for the LSPosed video feed test flow in your own scoped test apps.",
+                    "Choose how RootDeck should prepare videos that do not match the camera shape. RootDeck saves this for the Vector / LSPosed video feed test flow in your own scoped test apps.",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 AssistChip(onClick = {}, label = { Text("Repeat video playback: always on") })
@@ -321,30 +372,26 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
                             )
                         }
                         if (previewMode == SandboxMode.RealCamera) {
-                            if (!hasCameraPermission) {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().aspectRatio(9f / 16f).background(MaterialTheme.colorScheme.surfaceVariant),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text("Camera permission needed", style = MaterialTheme.typography.bodyMedium)
-                                        Button(onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                                            Text("Allow Camera")
+                            Box(
+                                modifier = Modifier.fillMaxWidth().aspectRatio(9f / 16f).background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("Use the Android camera app", style = MaterialTheme.typography.bodyMedium)
+                                    Text(
+                                        "This opens your phone's normal camera app for the real camera check.",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    if (!hasCameraPermission) {
+                                        OutlinedButton(onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }) {
+                                            Text("Allow Camera Permission")
                                         }
                                     }
+                                    Button(onClick = { openAndroidCameraApp() }) {
+                                        Text("Open Android Camera")
+                                    }
                                 }
-                            } else {
-                                AndroidView(
-                                    modifier = Modifier.fillMaxWidth().aspectRatio(9f / 16f),
-                                    factory = { viewContext ->
-                                        TextureView(viewContext).also { texture ->
-                                            startSandboxCamera(viewContext, texture, previewLensFacing, previewCameraController)
-                                        }
-                                    },
-                                    update = { texture ->
-                                        startSandboxCamera(texture.context, texture, previewLensFacing, previewCameraController)
-                                    },
-                                )
                             }
                         } else {
                             if (selectedVideoUri != null) {
@@ -396,7 +443,7 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
                         }
                         if (selectedVideoUri == null) {
                             Text(
-                                "Select a video first, then save these crop/resize settings for the LSPosed test flow.",
+                                "Select a video first, then save these crop/resize settings for the Vector / LSPosed test flow.",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -415,12 +462,12 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
                     Text("4. Start First Test Run", style = MaterialTheme.typography.titleSmall)
                 }
                 Text(
-                    "This prepares the saved repeat-video setup for an app you own or control. Enable RootDeck in LSPosed and scope it only to that test app before opening the app's camera screen.",
+                    "This prepares the saved repeat-video setup for an app you own or control. Enable RootDeck in Vector / LSPosed and scope it only to that test app before opening the app's camera screen.",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 StatusRow("Video setup", if (selectedVideoUri != null && setupSaved) "Saved" else "Select video and save setup first")
                 StatusRow("Repeat playback", "Always on")
-                StatusRow("LSPosed scope", "Enable RootDeck only for your own test app")
+                StatusRow("Vector / LSPosed scope", "Enable RootDeck only for your own test app")
                 StatusRow("Test run", testRunStatus)
                 Button(
                     enabled = selectedVideoUri != null,
@@ -443,15 +490,15 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.VerifiedUser, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(8.dp))
-                    Text("5. LSPosed Test Readiness", style = MaterialTheme.typography.titleSmall)
+                    Text("5. Vector / LSPosed Test Readiness", style = MaterialTheme.typography.titleSmall)
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Use this checklist after installing LSPosed. RootDeck prepares the video source and repeat setting, but you still enable and scope the module in LSPosed Manager. If a normal Camera app still shows the real lens, the current LSPosed module path is not actively replacing that app's camera stream yet; test only inside apps you own or control.",
+                    "Use this checklist after installing Vector. RootDeck prepares the video source and repeat setting, but you still enable and scope the module in Vector / LSPosed Manager. If a normal Camera app still shows the real lens, the current Vector / LSPosed module path is not actively replacing that app's camera stream yet; test only inside apps you own or control.",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Spacer(Modifier.height(12.dp))
-                StatusRow("LSPosed Manager", if (lsposedStatus.managerInstalled) "Detected" else "Not detected")
+                StatusRow("Vector / LSPosed Manager", if (lsposedStatus.managerInstalled) "Detected" else "Not detected")
                 StatusRow("Video module entry", if (lsposedStatus.moduleEntryPackaged) "Packaged" else "Missing")
                 StatusRow("Selected video", selectedVideoLabel ?: "Not selected")
                 StatusRow("Target camera", targetCamera)
@@ -463,15 +510,79 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
                 StatusRow("Ready to test", if (lsposedStatus.managerInstalled && selectedVideoUri != null && setupSaved) "Yes — prepare first run, then open your scoped test app" else "Not yet")
                 Spacer(Modifier.height(12.dp))
                 OutlinedButton(onClick = { lsposedStatus = readLsposedStatus(context) }) {
-                    Text("Refresh LSPosed Status")
+                    Text("Refresh Vector / LSPosed Status")
                 }
                 if (!lsposedStatus.managerInstalled) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "LSPosed Manager was not detected yet. If you just installed LSPosed, reboot first, then open LSPosed Manager and enable RootDeck for your own test apps.",
+                        "Vector / LSPosed Manager was not detected yet. If you just installed Vector, reboot first, then open Vector / LSPosed Manager and enable RootDeck for your own test apps.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error,
                     )
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun VectorVideoSetupStatusCard(
+    status: VectorInstallStatus?,
+    asset: VectorInstallAsset?,
+    error: String?,
+    onRefresh: () -> Unit,
+    onOpenVectorSetup: () -> Unit,
+) {
+    val s = status
+    val vectorDetected = when {
+        s?.vectorManagerDetected == true || s?.vectorModuleDetected == true -> true
+        s?.vectorManagerDetected == false && s.vectorModuleDetected == false -> false
+        else -> null
+    }
+    val nextAction = when {
+        s == null -> "Checking Vector / LSPosed readiness…"
+        !s.rootAvailable -> "Root is required before Vector setup."
+        !s.magiskDetected -> "Install Magisk first."
+        s.zygiskEnabled == false -> "Open Magisk > Settings > enable Zygisk > reboot."
+        vectorDetected == false -> "Download recommended Vector."
+        vectorDetected == true -> "Vector / LSPosed environment detected. Continue with Video Test Feed setup."
+        else -> "Vector / LSPosed status is unknown. Open the setup guide if video injection is not working."
+    }
+
+    ElevatedCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.VerifiedUser, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(8.dp))
+                Text("Vector / LSPosed setup check", style = MaterialTheme.typography.titleSmall)
+            }
+            if (status == null) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+            }
+            StatusRow("Root", if (status?.rootAvailable == true) "ready" else if (status == null) "checking" else "missing")
+            StatusRow("Magisk", if (status?.magiskDetected == true) "detected" else if (status == null) "checking" else "missing")
+            StatusRow("Magisk version", status?.magiskVersion ?: "Unknown")
+            StatusRow("Zygisk", when (status?.zygiskEnabled) { true -> "enabled"; false -> "disabled"; null -> "unknown" })
+            StatusRow("Android", status?.let { "${it.androidRelease} · SDK ${it.androidSdk}" } ?: "checking")
+            StatusRow("Device codename", status?.deviceCodename ?: "Unknown")
+            StatusRow("Build ID", status?.buildId ?: "Unknown")
+            StatusRow("Vector", when (vectorDetected) { true -> "detected"; false -> "missing"; null -> "unknown" })
+            StatusRow("Manager hint", when (status?.vectorManagerDetected) { true -> "detected"; false -> "missing"; null -> "unknown" })
+            StatusRow("Module hint", when (status?.vectorModuleDetected) { true -> "detected"; false -> "missing"; null -> "unknown" })
+            StatusRow("Recommended Vector ZIP", asset?.zipFileName ?: if (error == null) "checking" else "manual selection needed")
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall) }
+            Text(nextAction, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onRefresh, modifier = Modifier.weight(1f)) {
+                    Text("Refresh")
+                }
+                Button(
+                    onClick = onOpenVectorSetup,
+                    enabled = vectorDetected != true,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(if (vectorDetected == true) "Ready" else "Setup")
                 }
             }
         }
@@ -575,6 +686,7 @@ private fun readLsposedStatus(context: Context): LsposedStatus {
     val possibleManagerPackages = listOf(
         "org.lsposed.manager",
         "org.lsposed.manager.debug",
+        "io.github.libxposed.manager",
     )
     val managerInstalled = possibleManagerPackages.any { packageName ->
         runCatching {

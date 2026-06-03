@@ -38,23 +38,24 @@ fun StartupSetupScreen(
     repo: RootRepository,
     onFinish: () -> Unit,
     onOpenVideoTestFeed: () -> Unit,
+    onOpenVectorSetup: () -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     var step by remember { mutableStateOf(if (repo.rootMode.value == RootMode.ROOTDECK_ONLY) SetupStep.Recommendations else SetupStep.RootAccess) }
     var busy by remember { mutableStateOf(false) }
-    var statusText by remember { mutableStateOf(if (repo.rootMode.value == RootMode.ROOTDECK_ONLY) "Root access is already enabled. RootDeck will now show the recommended installs." else "RootDeck needs root access to install LSPosed for you.") }
+    var statusText by remember { mutableStateOf(if (repo.rootMode.value == RootMode.ROOTDECK_ONLY) "Root access is already enabled. RootDeck will now show the recommended installs." else "RootDeck needs root access to check Magisk/Zygisk and guide the right Vector setup.") }
     var installState by remember { mutableStateOf(LsposedInstallState()) }
     var downloadProgress by remember { mutableStateOf<Float?>(null) }
 
     val recommendations = listOf(
         RecommendedInstall(
-            title = "LSPosed",
-            subtitle = "Required for RootDeck module features on Magisk devices.",
+            title = "Vector / LSPosed",
+            subtitle = "Recommended modern continuation/fork for RootDeck module features on Magisk devices.",
             status = when {
                 installState.lsposedInstalled -> "Installed"
                 installState.rebootPending -> "Reboot needed"
-                installState.assetUrl != null -> "Ready to install"
+                installState.assetUrl != null -> "Guide ready"
                 else -> "Scan needed"
             },
             icon = Icons.Outlined.Extension,
@@ -62,13 +63,20 @@ fun StartupSetupScreen(
         ),
         RecommendedInstall(
             title = "Magisk root access",
-            subtitle = "Lets RootDeck install modules after your approval.",
+            subtitle = "Lets RootDeck check your Magisk/Zygisk setup after your approval.",
             status = if (repo.rootMode.value == RootMode.ROOTDECK_ONLY) "Enabled" else "Needs permission",
             icon = Icons.Outlined.Security,
         ),
         RecommendedInstall(
+            title = "Zygisk",
+            subtitle = "Recommended for modern Vector module loading.",
+            status = if (installState.zygiskEnabled) "Enabled ✓" else "Recommended on",
+            icon = Icons.Outlined.Verified,
+            primary = installState.zygiskEnabled,
+        ),
+        RecommendedInstall(
             title = "Reboot after install",
-            subtitle = "LSPosed becomes active after restarting your phone.",
+            subtitle = "Vector becomes active after restarting your phone.",
             status = if (installState.rebootPending) "Needed now" else if (installState.lsposedInstalled) "Done" else "Final step",
             icon = Icons.Outlined.RestartAlt,
         ),
@@ -78,14 +86,31 @@ fun StartupSetupScreen(
         scope.launch {
             step = SetupStep.Recommendations
             busy = true
-            statusText = "Scanning your device and checking the recommended LSPosed install…"
+            statusText = "Scanning your device and checking the recommended Vector setup…"
             installState = LsposedInstaller.check(context, repo)
-            statusText = installState.message ?: "Scan finished. Review the recommended installs below."
+            statusText = "Scan finished. Review the recommended installs below, then open the official Vector setup guide."
             if (installState.lsposedInstalled) {
                 step = SetupStep.Installed
             }
             busy = false
         }
+    }
+
+    fun runRecommendedSetup() {
+        if (busy) return
+        if (!installState.zygiskEnabled && repo.rootMode.value == RootMode.ROOTDECK_ONLY) {
+            busy = true
+            statusText = "Enabling Zygisk in Magisk…"
+            scope.launch {
+                val result = LsposedInstaller.enableZygisk(repo)
+                installState = LsposedInstaller.check(context, repo)
+                statusText = if (result.success) "Zygisk enabled. It will show as complete after Magisk applies the setting; reboot may be required." else result.stderr.ifBlank { "Could not enable Zygisk." }
+                busy = false
+            }
+            return
+        }
+        statusText = "Opening the Vector / LSPosed setup guide. RootDeck will not silently install Magisk modules."
+        onOpenVectorSetup()
     }
 
     LaunchedEffect(Unit) {
@@ -108,7 +133,7 @@ fun StartupSetupScreen(
                             HeaderIcon(Icons.Outlined.Security)
                             Text("Set up RootDeck", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                             Text(
-                                "To set up LSPosed automatically, RootDeck needs root access. Tap the button below, then press Allow in Magisk when it asks.",
+                                "RootDeck can check Magisk and Zygisk first, then guide you to the correct official Vector release. Tap Setup, then press Allow in Magisk if it asks.",
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                             Text(statusText, style = MaterialTheme.typography.bodySmall)
@@ -124,8 +149,8 @@ fun StartupSetupScreen(
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                            ) { Text(if (busy) "Waiting for Magisk…" else "Allow Root Access") }
-                            TextButton(onClick = onFinish, modifier = Modifier.fillMaxWidth()) { Text("Skip for now") }
+                            ) { Text(if (busy) "Waiting for Magisk…" else "Setup") }
+                            TextButton(onClick = onFinish, modifier = Modifier.fillMaxWidth()) { Text("No thanks") }
                         }
 
                         SetupStep.Recommendations -> {
@@ -137,63 +162,56 @@ fun StartupSetupScreen(
                             )
                             if (busy) {
                                 LinearProgressIndicator(Modifier.fillMaxWidth())
-                                Text("Looking for Magisk, Android version, and the matching LSPosed package…", style = MaterialTheme.typography.bodySmall)
+                                Text("Looking for Magisk, Android version, Zygisk, and the right Vector setup…", style = MaterialTheme.typography.bodySmall)
                                 RecommendationGallery(recommendations)
                             } else {
                                 Text(
-                                    "RootDeck found these setup steps for your device. Start with LSPosed, then reboot and enable the RootDeck module.",
+                                    "RootDeck found these setup steps for your device. Start with Vector / LSPosed, then reboot and enable only the RootDeck module where needed.",
                                     style = MaterialTheme.typography.bodySmall,
                                 )
                                 RecommendationGallery(recommendations)
                                 installState.releaseName?.let {
-                                    AssistChip(onClick = {}, label = { Text("Selected LSPosed version: $it") })
+                                    AssistChip(onClick = {}, label = { Text("Detected LSPosed/Vector version: $it") })
                                 }
                                 installState.error?.let {
                                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                                }
+                                if (!installState.zygiskEnabled && repo.rootMode.value == RootMode.ROOTDECK_ONLY) {
+                                    ElevatedCard(Modifier.fillMaxWidth()) {
+                                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Text("Recommended: enable Zygisk", style = MaterialTheme.typography.titleSmall)
+                                            Text("Zygisk is recommended for Vector. Tap Setup below to enable it in Magisk settings when root mode is enabled.", style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                }
+                                if (installState.zygiskEnabled) {
+                                    AssistChip(onClick = {}, label = { Text("✓ Zygisk enabled — no further setup needed") })
                                 }
                                 if (installState.rebootPending) {
                                     NextStepCard(
                                         title = "Reboot still needed",
                                         steps = listOf(
-                                            "Restart your phone once to activate LSPosed.",
+                                            "Restart your phone once to activate Vector / LSPosed.",
                                             "Open RootDeck again after reboot.",
-                                            "RootDeck will detect LSPosed and will not recommend installing it again.",
+                                            "RootDeck will detect the active framework and will not recommend setup again.",
                                         ),
                                     )
                                 }
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedButton(onClick = { scanRecommendations() }, enabled = !busy) { Text("Scan again") }
-                                    Button(
-                                        enabled = installState.assetUrl != null && !busy && !installState.rebootPending,
-                                        onClick = {
-                                            step = SetupStep.Installing
-                                            busy = true
-                                            downloadProgress = 0f
-                                            scope.launch {
-                                                installState = LsposedInstaller.downloadAndInstall(
-                                                    context = context,
-                                                    repo = repo,
-                                                    current = installState,
-                                                    onProgress = { downloadProgress = it },
-                                                )
-                                                busy = false
-                                                statusText = installState.message ?: installState.error ?: "Install finished."
-                                                step = if (installState.error == null) SetupStep.Success else SetupStep.Failed
-                                            }
-                                        },
-                                    ) { Text(if (installState.rebootPending) "Reboot Required" else "Install LSPosed") }
-                                }
+                                Button(
+                                    enabled = !busy && !installState.rebootPending,
+                                    onClick = { runRecommendedSetup() },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) { Text(if (installState.rebootPending) "Reboot Required" else "Setup") }
                                 TextButton(
                                     onClick = onFinish,
-                                    enabled = !installState.rebootPending,
                                     modifier = Modifier.fillMaxWidth(),
-                                ) { Text(if (installState.rebootPending) "Reboot before continuing" else "Not now") }
+                                ) { Text("No thanks") }
                             }
                         }
 
                         SetupStep.Installing -> {
                             HeaderIcon(Icons.Outlined.Download)
-                            Text("Downloading LSPosed", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            Text("Opening Vector setup", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                             val progress = downloadProgress
                             if (progress != null && progress > 0f) {
                                 LinearProgressIndicator(progress = { progress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
@@ -203,15 +221,15 @@ fun StartupSetupScreen(
                                 Text("Preparing download…", style = MaterialTheme.typography.bodySmall)
                             }
                             SetupFlow(current = 1)
-                            Text("After the download, Magisk installs the module. Please allow any Magisk prompt. RootDeck will then show either a success screen or a clear failure reason.", style = MaterialTheme.typography.bodyMedium)
+                            Text("RootDeck no longer silently installs Magisk modules. The Vector guide opens the official release, downloads the ZIP to Downloads, and shows the exact Magisk steps.", style = MaterialTheme.typography.bodyMedium)
                             Text(statusText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
 
                         SetupStep.Success -> {
                             HeaderIcon(Icons.Outlined.CheckCircle)
-                            Text("LSPosed setup finished", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            Text("Vector setup guide finished", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                             Text(
-                                installState.message ?: "Download and Magisk install completed successfully. One restart is required before LSPosed can work.",
+                                installState.message ?: "Follow the Vector guide and reboot once after installing the ZIP through Magisk Modules.",
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                             installState.downloadedFile?.let {
@@ -222,7 +240,7 @@ fun StartupSetupScreen(
                                 title = "What to do next",
                                 steps = listOf(
                                     "Restart your phone.",
-                                    "After reboot, open the LSPosed notification or LSPosed Manager.",
+                                    "After reboot, open the Vector/LSPosed notification or manager.",
                                     "Enable the RootDeck module and scope it only to your own test apps.",
                                     "Open Video Test Feed to choose a video file, front/back camera target, and crop/resize mode.",
                                 ),
@@ -239,9 +257,9 @@ fun StartupSetupScreen(
                         SetupStep.Installed -> {
                             val versionLabel = installState.lsposedManagerVersion ?: "Detected"
                             HeaderIcon(Icons.Outlined.CheckCircle)
-                            Text("LSPosed installed", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            Text("Vector / LSPosed detected", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                             Text(
-                                "LSPosed is successfully installed and detected on this device. No actions are needed.",
+                                "Vector / LSPosed is successfully installed and detected on this device. No actions are needed.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 textAlign = TextAlign.Center,
                             )
@@ -260,9 +278,9 @@ fun StartupSetupScreen(
 
                         SetupStep.Failed -> {
                             HeaderIcon(Icons.Outlined.WarningAmber)
-                            Text("LSPosed setup needs attention", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            Text("Vector setup needs attention", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                             Text(
-                                "RootDeck could not finish the LSPosed install. Nothing was changed unless Magisk reported a successful install.",
+                                "RootDeck could not finish the Vector setup check. Nothing was installed automatically; use the official Vector guide and Magisk Modules screen.",
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                             installState.message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
@@ -272,13 +290,11 @@ fun StartupSetupScreen(
                                 steps = listOf(
                                     "Check that Magisk is installed and working.",
                                     "Make sure RootDeck is allowed in Magisk Superuser.",
-                                    "Tap Scan again, then Install LSPosed.",
+                                    "Tap Setup to retry the next recommended step.",
                                 ),
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(onClick = { scanRecommendations() }) { Text("Scan again") }
-                                Button(onClick = { step = SetupStep.Recommendations }) { Text("Back") }
-                            }
+                            Button(onClick = { scanRecommendations() }, modifier = Modifier.fillMaxWidth()) { Text("Setup") }
+                            TextButton(onClick = onFinish, modifier = Modifier.fillMaxWidth()) { Text("No thanks") }
                         }
                     }
                 }
@@ -319,6 +335,7 @@ private fun RecommendationGallery(items: List<RecommendedInstall>) {
 @Composable
 private fun SetupFlow(current: Int) {
     val steps = listOf(
+        Icons.Outlined.Security to "Zygisk",
         Icons.Outlined.Download to "Download",
         Icons.Outlined.Settings to "Install",
         Icons.Outlined.RestartAlt to "Reboot",

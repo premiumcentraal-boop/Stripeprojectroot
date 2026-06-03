@@ -1,6 +1,7 @@
 package com.rootdeck.app
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -10,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 
 @Composable
 fun DoppelgangerScreen(
@@ -19,12 +21,14 @@ fun DoppelgangerScreen(
 ) {
     LaunchedEffect(Unit) {
         if (doppel.state.value.users.isEmpty()) doppel.refresh()
+        if (repo.apps.isEmpty()) repo.loadInstalledApps()
     }
     val state = doppel.state.value
 
     var pendingAction by remember { mutableStateOf<PendingAction?>(null) }
     var newUserName by remember { mutableStateOf("RootDeck-Clone") }
     var clonePackage by remember { mutableStateOf("") }
+    var appSearch by remember { mutableStateOf("") }
     var cloneTargetUser by remember { mutableStateOf<Int?>(null) }
 
     pendingAction?.let { action ->
@@ -102,6 +106,12 @@ fun DoppelgangerScreen(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Use the user name as the safe clone label. Renaming the cloned app package or APK is not recommended because it can break signatures, app data, login state, and updates.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Spacer(Modifier.height(8.dp))
                 Button(
                     onClick = {
@@ -125,12 +135,51 @@ fun DoppelgangerScreen(
                 Text("Clone an app into a user", style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = clonePackage,
-                    onValueChange = { clonePackage = it },
-                    label = { Text("Package name (e.g. com.whatsapp)") },
+                    value = appSearch,
+                    onValueChange = { appSearch = it },
+                    label = { Text("Search installed apps") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
+                Spacer(Modifier.height(8.dp))
+                val selectableApps = repo.apps
+                    .filter { app ->
+                        val q = appSearch.trim().lowercase()
+                        q.isBlank() || app.label.lowercase().contains(q) || app.packageName.lowercase().contains(q)
+                    }
+                    .filterNot { it.packageName == "com.rootdeck.app" }
+                    .take(8)
+                if (repo.appsLoading.value) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Text("Loading installed apps…", style = MaterialTheme.typography.bodySmall)
+                } else {
+                    selectableApps.forEach { app ->
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    clonePackage = app.packageName
+                                    appSearch = app.label
+                                },
+                            tonalElevation = if (clonePackage == app.packageName) 3.dp else 0.dp,
+                            color = if (clonePackage == app.packageName) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                            shape = MaterialTheme.shapes.medium,
+                        ) {
+                            Column(Modifier.padding(10.dp)) {
+                                Text(app.label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                Text(app.packageName, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                        Spacer(Modifier.height(6.dp))
+                    }
+                    OutlinedTextField(
+                        value = clonePackage,
+                        onValueChange = { clonePackage = it },
+                        label = { Text("Selected package") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
                 Text("Target user:", style = MaterialTheme.typography.labelMedium)
                 Column {
@@ -172,7 +221,7 @@ fun DoppelgangerScreen(
 
         // Existing clones
         if (state.clones.isNotEmpty()) {
-            Text("Active clones", style = MaterialTheme.typography.titleSmall)
+            Text("Active cloned apps", style = MaterialTheme.typography.titleSmall)
             state.clones.forEach { c ->
                 ElevatedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp)) {
@@ -195,7 +244,7 @@ fun DoppelgangerScreen(
                             OutlinedButton(
                                 onClick = {
                                     pendingAction = PendingAction(
-                                        title = "Remove clone",
+                                        title = "Remove cloned app",
                                         command = "pm uninstall --user ${c.userId} ${c.packageName}",
                                         risk = RiskLevel.Medium,
                                         body = "Uninstalls the clone from user ${c.userId}. The original under " +
@@ -204,7 +253,7 @@ fun DoppelgangerScreen(
                                     )
                                 },
                                 enabled = !state.busy,
-                            ) { Text("Remove") }
+                            ) { Text("Remove app clone") }
                         }
                     }
                 }
@@ -215,6 +264,7 @@ fun DoppelgangerScreen(
         if (state.users.any { it.userId != 0 }) {
             Text("Clone users", style = MaterialTheme.typography.titleSmall)
             state.users.filter { it.userId != 0 }.forEach { u ->
+                val userCloneCount = state.clones.count { it.userId == u.userId }
                 ElevatedCard(Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier.padding(12.dp),
@@ -222,20 +272,21 @@ fun DoppelgangerScreen(
                     ) {
                         Column(Modifier.weight(1f)) {
                             Text(u.name, style = MaterialTheme.typography.bodyMedium)
-                            Text("id=${u.userId}", style = MaterialTheme.typography.bodySmall)
+                            Text("id=${u.userId} · $userCloneCount cloned apps", style = MaterialTheme.typography.bodySmall)
+                            Text("Deleting this user removes all cloned apps and app data inside it.", style = MaterialTheme.typography.labelSmall)
                         }
                         OutlinedButton(
                             onClick = {
                                 pendingAction = PendingAction(
-                                    title = "Remove user ${u.userId}",
+                                    title = "Delete clone user and all cloned apps",
                                     command = "pm remove-user ${u.userId}",
                                     risk = RiskLevel.High,
-                                    body = "Deletes the secondary user and all its app data. This cannot be undone.",
+                                    body = "Deletes clone user ${u.name}, all $userCloneCount cloned apps inside it, and all app data for that clone user. The original apps in your main profile are not affected. This cannot be undone.",
                                     run = { doppel.removeUser(u.userId) },
                                 )
                             },
                             enabled = !state.busy,
-                        ) { Text("Remove user") }
+                        ) { Text("Delete user + apps") }
                     }
                 }
             }

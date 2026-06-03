@@ -29,7 +29,7 @@ private sealed class Dest(val title: String) {
     object Doppelganger : Dest("Doppelganger")
     object VideoTestFeed : Dest("Video Test Feed")
     object SandboxCamera : Dest("Sandbox Camera")
-    object LsposedInstaller : Dest("LSPosed Installer")
+    object LsposedInstaller : Dest("Vector / LSPosed Setup")
     data class Planned(val tool: BasicTool) : Dest(tool.title)
     data class PlannedModule(val tool: PlannedBasicTool) : Dest(tool.safeName)
 }
@@ -123,6 +123,12 @@ private fun RootDeckApp(
                         tab = Dest.Tools
                         subscreen = Dest.VideoTestFeed
                     },
+                    onOpenVectorSetup = {
+                        setupPrefs.edit().putBoolean("completed_or_skipped", true).apply()
+                        setupFinishedForSession = true
+                        tab = Dest.Tools
+                        subscreen = Dest.LsposedInstaller
+                    },
                 )
             } else {
                 val current = subscreen ?: tab
@@ -160,9 +166,9 @@ private fun RootDeckApp(
                 Dest.ScheduledReboot -> ScheduledRebootScreen(repo, onBack = { subscreen = null })
                 Dest.ProcessPrivacy -> ProcessPrivacyScreen(repo, privacy, onBack = { subscreen = null })
                 Dest.Doppelganger -> DoppelgangerScreen(repo, doppel, onBack = { subscreen = null })
-                Dest.VideoTestFeed -> VideoTestFeedScreen(onBack = { subscreen = null })
+                Dest.VideoTestFeed -> VideoTestFeedScreen(onBack = { subscreen = null }, onOpenVectorSetup = { subscreen = Dest.LsposedInstaller })
                 Dest.SandboxCamera -> SandboxCameraScreen(onBack = { subscreen = null })
-                Dest.LsposedInstaller -> LsposedInstallerScreen(repo, onBack = { subscreen = null })
+                Dest.LsposedInstaller -> VectorSetupGuideScreen(onBack = { subscreen = null })
                 is Dest.Planned -> PlannedToolScreen(current.tool, onBack = { subscreen = null })
                     is Dest.PlannedModule -> PlannedBasicToolDetailScreen(current.tool, onBack = { subscreen = null })
                 }

@@ -15,6 +15,36 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: "v0.28.0",
+    name: "Video Test Feed Vector readiness",
+    date: "2026-06-03",
+    notes: [
+      "Updated Video Test Feed setup from old LSPosed flow to Vector / LSPosed.",
+      "Added checks for Magisk, Zygisk, Android version, device codename, and recommended Vector Zygisk ZIP.",
+      "Added a clear next action when root, Magisk, Zygisk, or Vector / LSPosed setup is missing.",
+    ],
+  },
+  {
+    version: "v0.27.0",
+    name: "Vector setup assistant",
+    date: "2026-06-03",
+    notes: [
+      "Updated the LSPosed setup guide to Vector, formerly LSPosed, with Magisk/Zygisk detection and official release recommendation.",
+      "The startup setup flow now guides users to the official JingMatrix/Vector release instead of silently installing Magisk modules.",
+      "Added clear device/root status, recommended ZIP download, and beginner-friendly Magisk Modules next steps.",
+    ],
+  },
+  {
+    version: "v0.23.0",
+    name: "Doppelganger clone management",
+    date: "2026-06-03",
+    notes: [
+      "Added an installed-app selector for choosing which app to clone.",
+      "Improved clone cleanup with a clear Delete user + apps flow that removes the clone user, cloned apps, and clone-user app data.",
+      "Clarified that clone user names are the safe label, while APK/package renaming is not recommended because it can break signatures, app data, login state, and updates.",
+    ],
+  },
+  {
     version: "v0.19.0",
     name: "Scoped LSPosed sandbox bridge",
     date: "2026-06-03",

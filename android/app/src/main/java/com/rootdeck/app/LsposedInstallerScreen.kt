@@ -249,6 +249,7 @@ data class LsposedInstallState(
     val lsposedInstalled: Boolean = false,
     val rebootPending: Boolean = false,
     val lsposedManagerVersion: String? = null,
+    val zygiskEnabled: Boolean = false,
 )
 
 object LsposedInstaller {
@@ -294,6 +295,7 @@ object LsposedInstaller {
     }
 
     suspend fun check(context: Context, repo: RootRepository): LsposedInstallState = withContext(Dispatchers.IO) {
+        val zygiskEnabled = isZygiskEnabled()
         val lsposedVersion = installedLsposedManagerVersion(context)
         val lsposedInstalled = lsposedVersion != null
         val rebootPending = isInstallPendingReboot(context) && !lsposedInstalled
@@ -304,6 +306,7 @@ object LsposedInstaller {
                 lsposedInstalled = true,
                 rebootPending = false,
                 lsposedManagerVersion = lsposedVersion,
+                zygiskEnabled = zygiskEnabled,
             )
         }
         val magisk = RootShell.runRootCommand("magisk -V 2>/dev/null || magisk -v 2>/dev/null", timeoutSeconds = 8)
@@ -316,6 +319,7 @@ object LsposedInstaller {
                 message = if (rebootPending) "LSPosed module install was sent to Magisk. Reboot is still needed." else "Could not read official LSPosed release metadata.",
                 error = if (rebootPending) null else error.message ?: "Unknown release lookup error",
                 rebootPending = rebootPending,
+                zygiskEnabled = zygiskEnabled,
             )
         }
         LsposedInstallState(
@@ -332,7 +336,24 @@ object LsposedInstaller {
             },
             error = if (magisk.success || rebootPending) null else magisk.stderr.ifBlank { "Magisk not detected." },
             rebootPending = rebootPending,
+            zygiskEnabled = zygiskEnabled,
         )
+    }
+
+    suspend fun enableZygisk(repo: RootRepository): CommandResult = withContext(Dispatchers.IO) {
+        val command = "magisk --sqlite \"REPLACE INTO settings (key,value) VALUES('zygisk',1);\""
+        val done = kotlinx.coroutines.CompletableDeferred<CommandResult>()
+        repo.runConfirmedCommand("Enable Magisk Zygisk", command, timeoutSeconds = 30) { done.complete(it) }
+        done.await()
+    }
+
+    private fun isZygiskEnabled(): Boolean {
+        val result = RootShell.runRootCommand(
+            "magisk --sqlite \"SELECT value FROM settings WHERE key='zygisk';\" 2>/dev/null",
+            timeoutSeconds = 8,
+        )
+        val raw = (result.stdout + "\n" + result.stderr).lowercase()
+        return result.success && (Regex("(^|\\D)1($|\\D)").containsMatchIn(raw) || "true" in raw || "zygisk=1" in raw)
     }
 
     suspend fun downloadAndInstall(
