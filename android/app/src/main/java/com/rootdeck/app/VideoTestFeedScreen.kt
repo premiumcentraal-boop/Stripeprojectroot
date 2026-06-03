@@ -25,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import android.widget.VideoView
 
 private const val VIDEO_MODULE_CLASS = "com.rootdeck.app.xposed.VideoInjectionXposedModule"
 private const val VIDEO_FEED_PREFS = "rootdeck_video_feed_setup"
@@ -351,12 +353,60 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
             }
         }
 
+
+        ElevatedCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.Movie, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(8.dp))
+                    Text("5. Internal Test Camera Preview", style = MaterialTheme.typography.titleSmall)
+                }
+                Text(
+                    "Controlled RootDeck-only test harness. This does not spoof another app. It plays your selected video as a local test feed and loops it automatically so you can verify source, repeat playback, and framing before LSPosed scoped testing.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                if (selectedVideoUri != null) {
+                    AndroidView(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp),
+                        factory = { viewContext ->
+                            VideoView(viewContext).apply {
+                                setVideoURI(selectedVideoUri)
+                                setOnPreparedListener { player ->
+                                    player.isLooping = true
+                                    start()
+                                }
+                                setOnCompletionListener { start() }
+                            }
+                        },
+                        update = { videoView ->
+                            videoView.setVideoURI(selectedVideoUri)
+                            videoView.setOnPreparedListener { player ->
+                                player.isLooping = true
+                                videoView.start()
+                            }
+                            videoView.setOnCompletionListener { videoView.start() }
+                        },
+                    )
+                    StatusRow("Internal preview", "Playing selected video on repeat")
+                    StatusRow("LSPosed spoofing", "Not performed in RootDeck preview")
+                } else {
+                    Text(
+                        "Select a video first to start the internal test camera preview.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
         ElevatedCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.VerifiedUser, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(8.dp))
-                    Text("5. LSPosed Test Readiness", style = MaterialTheme.typography.titleSmall)
+                    Text("6. LSPosed Test Readiness", style = MaterialTheme.typography.titleSmall)
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(

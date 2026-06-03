@@ -15,6 +15,16 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: "v0.17.0",
+    name: "Internal video test camera preview",
+    date: "2026-06-03",
+    notes: [
+      "Added a RootDeck-only internal test camera preview that plays the selected video on repeat.",
+      "The preview verifies video source selection and looping without spoofing another app's camera stream.",
+      "Updated dashboard and RootDeck APK workflow checks for v0.17.0.",
+    ],
+  },
+  {
     version: "v0.16.0",
     name: "Video Feed first test run",
     date: "2026-06-03",
