@@ -53,7 +53,7 @@ fun SandboxCameraScreen(onBack: () -> Unit) {
         TextButton(onClick = onBack) { Text("← Back to Basic Tools") }
         Text("Sandbox Camera App", style = MaterialTheme.typography.headlineSmall)
         Text(
-            "Internal RootDeck-only camera sandbox. Normal mode uses the real device camera. Test-feed mode plays the saved Video Test Feed video on repeat so you can verify the controlled replacement flow without targeting external apps.",
+            "Internal RootDeck-only camera sandbox. Normal mode uses the real device camera. Test-feed mode plays the saved Video Test Feed video on repeat. When RootDeck is enabled in LSPosed for RootDeck only, the module logs Camera1/Camera2 events and the saved test-feed config for this sandbox.",
             style = MaterialTheme.typography.bodySmall,
         )
         SafetyPolicyLink()
@@ -140,6 +140,7 @@ fun SandboxCameraScreen(onBack: () -> Unit) {
                 StatusLine("Fit mode", fitMode)
                 StatusLine("Output size", outputSize)
                 StatusLine("Repeat playback", if (repeatPlayback) "Always on" else "Off")
+                StatusLine("LSPosed scope", "Enable RootDeck package only")
                 StatusLine("Scope", "RootDeck internal sandbox only")
             }
         }

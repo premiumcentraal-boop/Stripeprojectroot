@@ -15,6 +15,16 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: "v0.19.0",
+    name: "Scoped LSPosed sandbox bridge",
+    date: "2026-06-03",
+    notes: [
+      "Scoped the Video Test Feed LSPosed bridge to RootDeck's own package only.",
+      "Connected Camera1/Camera2 hook visibility to the saved internal sandbox video-feed config and LSPosed logs.",
+      "Updated Sandbox Camera copy, dashboard version, and APK workflow checks for v0.19.0.",
+    ],
+  },
+  {
     version: "v0.18.0",
     name: "Sandbox camera test app",
     date: "2026-06-03",
