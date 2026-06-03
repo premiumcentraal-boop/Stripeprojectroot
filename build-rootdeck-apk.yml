@@ -31,6 +31,9 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
+      - name: Install Android build tools
+        run: sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
+
       - name: Set up Gradle 8.7
         uses: gradle/actions/setup-gradle@v6
         with:
@@ -41,6 +44,13 @@ jobs:
           cd android
           gradle assembleDebug --no-daemon
 
+      - name: Verify APK version
+        run: |
+          AAPT="$ANDROID_HOME/build-tools/34.0.0/aapt"
+          "$AAPT" dump badging android/app/build/outputs/apk/debug/app-debug.apk | tee apk-badging.txt
+          grep "versionName='0.8.0'" apk-badging.txt
+          grep "versionCode='8'" apk-badging.txt
+
       - name: Rename APK for Release
         run: |
           mv android/app/build/outputs/apk/debug/app-debug.apk rootdeck-debug.apk
@@ -50,9 +60,11 @@ jobs:
         with:
           tag_name: latest
           name: Latest RootDeck Build
-          body: "Automated build from GitHub Actions containing the latest RootDeck APK."
+          body: "Automated build from GitHub Actions containing the latest RootDeck APK. Current expected app version: v0.8.0 / Android versionName 0.8.0."
           files: rootdeck-debug.apk
           prerelease: true
           make_latest: true
+          overwrite_files: true
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

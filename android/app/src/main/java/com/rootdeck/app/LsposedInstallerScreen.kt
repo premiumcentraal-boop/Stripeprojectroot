@@ -206,7 +206,7 @@ object LsposedInstaller {
     private fun parseMagiskVersionCode(raw: String?): Int {
         if (raw.isNullOrBlank()) return 0
         return raw.lineSequence()
-            .flatMap { line -> Regex("\d+").findAll(line).map { it.value } }
+            .flatMap { line -> Regex("\\d+").findAll(line).map { it.value } }
             .mapNotNull { it.toIntOrNull() }
             .firstOrNull() ?: 0
     }
