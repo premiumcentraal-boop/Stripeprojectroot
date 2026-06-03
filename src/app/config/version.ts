@@ -15,6 +15,36 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: "v0.16.0",
+    name: "Video Feed first test run",
+    date: "2026-06-03",
+    notes: [
+      "Added a first test run step that saves the video feed setup and repeat playback request before opening a scoped test app.",
+      "Clarified that RootDeck should be enabled in LSPosed only for user-owned or controlled camera test apps.",
+      "Updated workflow checks and dashboard version label for the v0.16.0 build.",
+    ],
+  },
+  {
+    version: "v0.15.0",
+    name: "Repeat video feed setup",
+    date: "2026-06-03",
+    notes: [
+      "Video Test Feed now saves repeat playback as always on for selected input videos.",
+      "Readiness checklist now shows repeat status and clarifies scoped LSPosed testing expectations.",
+      "Dashboard version label updated for the repeat playback build.",
+    ],
+  },
+  {
+    version: "v0.14.0",
+    name: "Clear LSPosed setup results",
+    date: "2026-06-03",
+    notes: [
+      "Improved first-run recommended installs so users see the LSPosed setup gallery even when root mode was already enabled.",
+      "Added clearer LSPosed install progress, success, failure, and next-step screens with icon steps.",
+      "Added an obvious app version label on the Android dashboard.",
+    ],
+  },
+  {
     version: "v0.13.0",
     name: "Video crop and resize editor",
     date: "2026-06-03",

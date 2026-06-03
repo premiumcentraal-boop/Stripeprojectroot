@@ -6,8 +6,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Verified
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -28,9 +32,11 @@ fun LsposedInstallerScreen(repo: RootRepository, onBack: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     var state by remember { mutableStateOf(LsposedInstallState()) }
+    var downloadProgress by remember { mutableStateOf<Float?>(null) }
 
     fun refresh() {
         scope.launch {
+            downloadProgress = null
             state = state.copy(busy = true, message = "Checking Magisk and LSPosed release…", error = null)
             state = LsposedInstaller.check(context, repo)
         }
@@ -95,8 +101,14 @@ fun LsposedInstallerScreen(repo: RootRepository, onBack: () -> Unit) {
                         enabled = !state.busy && state.assetUrl != null && repo.rootMode.value == RootMode.ROOTDECK_ONLY,
                         onClick = {
                             scope.launch {
+                                downloadProgress = 0f
                                 state = state.copy(busy = true, message = "Downloading LSPosed module…", error = null)
-                                val installState = LsposedInstaller.downloadAndInstall(context, repo, state)
+                                val installState = LsposedInstaller.downloadAndInstall(
+                                    context = context,
+                                    repo = repo,
+                                    current = state,
+                                    onProgress = { downloadProgress = it },
+                                )
                                 state = installState
                             }
                         },
@@ -104,20 +116,116 @@ fun LsposedInstallerScreen(repo: RootRepository, onBack: () -> Unit) {
                         Text(if (state.busy) "Working…" else "Download & Install")
                     }
                 }
+                val progress = downloadProgress
+                if (state.busy) {
+                    if (progress != null && progress > 0f) {
+                        LinearProgressIndicator(progress = { progress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+                        Text("Download progress: ${(progress * 100).toInt()}%", style = MaterialTheme.typography.labelSmall)
+                    } else {
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                        Text("Working… RootDeck will show a success or failure result here.", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+                InstallResultGuide(state = state, rootEnabled = repo.rootMode.value == RootMode.ROOTDECK_ONLY)
                 if (repo.rootMode.value != RootMode.ROOTDECK_ONLY) {
                     Text(
-                        "Enable RootDeck root mode first in Root Management. Magisk will still show its own root prompt.",
+                        "Root access is not enabled yet. Go to Root Management, tap Allow Root Access, then come back here.",
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.labelSmall,
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InstallResultGuide(state: LsposedInstallState, rootEnabled: Boolean) {
+    val installed = state.downloadedFile != null && state.error == null && !state.busy
+    val failed = state.error != null && !state.busy
+    ElevatedCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(
+                    when {
+                        installed -> Icons.Outlined.CheckCircle
+                        failed -> Icons.Outlined.WarningAmber
+                        else -> Icons.Outlined.Download
+                    },
+                    contentDescription = null,
+                    tint = when {
+                        installed -> MaterialTheme.colorScheme.primary
+                        failed -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
                 Text(
-                    "After installation, reboot the device and enable LSPosed from its manager/notification if required.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    when {
+                        installed -> "Install completed — reboot required"
+                        failed -> "Install failed — see reason above"
+                        rootEnabled -> "Ready to install"
+                        else -> "Root access needed first"
+                    },
+                    style = MaterialTheme.typography.titleSmall,
+                )
+            }
+            SetupIconRow(current = if (installed) 3 else if (state.busy) 1 else 0)
+            if (installed) {
+                NumberedSteps(
+                    listOf(
+                        "Restart your phone now.",
+                        "Open LSPosed Manager or tap the LSPosed notification after reboot.",
+                        "Enable the RootDeck module and scope it only to your own test apps.",
+                        "Open Video Test Feed and save your video, camera, crop, and resize setup.",
+                    ),
+                )
+            } else if (failed) {
+                NumberedSteps(
+                    listOf(
+                        "Confirm Magisk is installed and Superuser access is allowed for RootDeck.",
+                        "Tap Refresh to scan again.",
+                        "Tap Download & Install again and keep this screen open until the final result appears.",
+                    ),
+                )
+            } else {
+                NumberedSteps(
+                    listOf(
+                        "Refresh checks the correct LSPosed build for your Magisk version.",
+                        "Download & Install downloads the ZIP and sends it to Magisk.",
+                        "A success or failure result will stay visible on this screen.",
+                    ),
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SetupIconRow(current: Int) {
+    val steps = listOf(
+        Icons.Outlined.Download to "Download",
+        Icons.Outlined.Security to "Magisk",
+        Icons.Outlined.RestartAlt to "Reboot",
+        Icons.Outlined.Verified to "Enable",
+    )
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        steps.forEachIndexed { index, step ->
+            Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                Icon(
+                    step.first,
+                    contentDescription = null,
+                    tint = if (index <= current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(step.second, style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+}
+
+@Composable
+private fun NumberedSteps(steps: List<String>) {
+    steps.forEachIndexed { index, text ->
+        Text("${index + 1}. $text", style = MaterialTheme.typography.bodySmall)
     }
 }
 

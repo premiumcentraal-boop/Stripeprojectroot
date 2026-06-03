@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,6 +39,8 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
     var cropAnchor by remember { mutableStateOf(VideoCropAnchor.Center) }
     var outputSize by remember { mutableStateOf(CameraOutputSize.MatchCamera) }
     var setupSaved by remember { mutableStateOf(false) }
+    var testRunStatus by remember { mutableStateOf("Not started") }
+    val repeatPlayback = true
     var lsposedStatus by remember { mutableStateOf(readLsposedStatus(context)) }
 
     fun setSelectedVideo(uri: Uri?) {
@@ -75,12 +78,24 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
             .putString("fit_mode", fitMode.name)
             .putString("crop_anchor", cropAnchor.name)
             .putString("output_size", outputSize.name)
+            .putBoolean("repeat_playback", repeatPlayback)
             .apply()
         setupSaved = true
     }
 
+    fun startFirstTestRun() {
+        saveVideoFeedSetup()
+        context.getSharedPreferences(VIDEO_FEED_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putLong("last_test_run_started_at", System.currentTimeMillis())
+            .putBoolean("test_run_requested", true)
+            .apply()
+        testRunStatus = "Test run prepared. Now open your own LSPosed-scoped camera test app after confirming RootDeck is enabled in LSPosed. The video is saved with repeat playback always on."
+    }
+
     LaunchedEffect(selectedVideoUri, targetCamera, fitMode, cropAnchor, outputSize) {
         setupSaved = false
+        testRunStatus = "Not started"
     }
 
     Column(
@@ -112,6 +127,7 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
                 StatusRow("Fit mode", fitMode.label)
                 StatusRow("Crop / bars", fitMode.editingSummary(cropAnchor))
                 StatusRow("Output size", outputSize.label)
+                StatusRow("Repeat playback", if (repeatPlayback) "Always on" else "Off")
                 StatusRow("Editor setup", if (setupSaved) "Saved for LSPosed test flow" else "Review and save below")
             }
         }
@@ -223,9 +239,10 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
                     Text("3. Fit Video to Camera Size", style = MaterialTheme.typography.titleSmall)
                 }
                 Text(
-                    "Choose how RootDeck should prepare videos that do not match the camera shape. This controls the LSPosed video feed preparation for your own scoped test apps.",
+                    "Choose how RootDeck should prepare videos that do not match the camera shape. RootDeck saves this for the LSPosed video feed test flow in your own scoped test apps.",
                     style = MaterialTheme.typography.bodySmall,
                 )
+                AssistChip(onClick = {}, label = { Text("Repeat video playback: always on") })
                 Text("Resize mode", style = MaterialTheme.typography.labelMedium)
                 VideoFitMode.values().forEach { mode ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -283,6 +300,7 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
                         Text("$targetCamera · ${fitMode.label} · ${outputSize.label}", style = MaterialTheme.typography.bodySmall)
                         Text(fitMode.previewText, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("Saved setup: ${fitMode.editingSummary(cropAnchor)}", style = MaterialTheme.typography.labelSmall)
+                        Text("Looping: selected videos are saved with repeat playback enabled, so the feed restarts automatically when the file ends.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Button(
                             onClick = { saveVideoFeedSetup() },
                             enabled = selectedVideoUri != null,
@@ -302,16 +320,47 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
             }
         }
 
+
+        ElevatedCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(8.dp))
+                    Text("4. Start First Test Run", style = MaterialTheme.typography.titleSmall)
+                }
+                Text(
+                    "This prepares the saved repeat-video setup for an app you own or control. Enable RootDeck in LSPosed and scope it only to that test app before opening the app's camera screen.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                StatusRow("Video setup", if (selectedVideoUri != null && setupSaved) "Saved" else "Select video and save setup first")
+                StatusRow("Repeat playback", "Always on")
+                StatusRow("LSPosed scope", "Enable RootDeck only for your own test app")
+                StatusRow("Test run", testRunStatus)
+                Button(
+                    enabled = selectedVideoUri != null,
+                    onClick = { startFirstTestRun() },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Prepare First Test Run")
+                }
+                Text(
+                    "If a normal Camera app still shows the real lens, that means it is not an approved scoped test target or the replacement pipeline is not active for that app. Use a controlled test app for the first run.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
         ElevatedCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.VerifiedUser, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(8.dp))
-                    Text("4. LSPosed Test Readiness", style = MaterialTheme.typography.titleSmall)
+                    Text("5. LSPosed Test Readiness", style = MaterialTheme.typography.titleSmall)
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Use this checklist after installing LSPosed. RootDeck can package the module entry and prepare your video source, but you still enable and scope the module in LSPosed Manager.",
+                    "Use this checklist after installing LSPosed. RootDeck prepares the video source and repeat setting, but you still enable and scope the module in LSPosed Manager. If a normal Camera app still shows the real lens, the current LSPosed module path is not actively replacing that app's camera stream yet; test only inside apps you own or control.",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Spacer(Modifier.height(12.dp))
@@ -322,8 +371,9 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
                 StatusRow("Fit mode", fitMode.label)
                 StatusRow("Crop / bars", fitMode.editingSummary(cropAnchor))
                 StatusRow("Output size", outputSize.label)
+                StatusRow("Repeat playback", if (repeatPlayback) "Always on — video restarts when it ends" else "Off")
                 StatusRow("Editor setup", if (setupSaved) "Saved" else "Not saved")
-                StatusRow("Ready to test", if (lsposedStatus.managerInstalled && selectedVideoUri != null && setupSaved) "Yes — open your scoped test app" else "Not yet")
+                StatusRow("Ready to test", if (lsposedStatus.managerInstalled && selectedVideoUri != null && setupSaved) "Yes — prepare first run, then open your scoped test app" else "Not yet")
                 Spacer(Modifier.height(12.dp))
                 OutlinedButton(onClick = { lsposedStatus = readLsposedStatus(context) }) {
                     Text("Refresh LSPosed Status")

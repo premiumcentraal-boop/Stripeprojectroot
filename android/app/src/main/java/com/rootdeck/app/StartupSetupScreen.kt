@@ -41,9 +41,9 @@ fun StartupSetupScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
-    var step by remember { mutableStateOf(SetupStep.RootAccess) }
+    var step by remember { mutableStateOf(if (repo.rootMode.value == RootMode.ROOTDECK_ONLY) SetupStep.Recommendations else SetupStep.RootAccess) }
     var busy by remember { mutableStateOf(false) }
-    var statusText by remember { mutableStateOf("RootDeck needs root access to install LSPosed for you.") }
+    var statusText by remember { mutableStateOf(if (repo.rootMode.value == RootMode.ROOTDECK_ONLY) "Root access is already enabled. RootDeck will now show the recommended installs." else "RootDeck needs root access to install LSPosed for you.") }
     var installState by remember { mutableStateOf(LsposedInstallState()) }
     var downloadProgress by remember { mutableStateOf<Float?>(null) }
 
@@ -71,12 +71,17 @@ fun StartupSetupScreen(
 
     fun scanRecommendations() {
         scope.launch {
+            step = SetupStep.Recommendations
             busy = true
             statusText = "Scanning your device and checking the recommended LSPosed install…"
             installState = LsposedInstaller.check(context, repo)
+            statusText = installState.message ?: "Scan finished. Review the recommended installs below."
             busy = false
-            step = SetupStep.Recommendations
         }
+    }
+
+    LaunchedEffect(Unit) {
+        if (repo.rootMode.value == RootMode.ROOTDECK_ONLY) scanRecommendations()
     }
 
     Surface(Modifier.fillMaxSize()) {
@@ -118,13 +123,18 @@ fun StartupSetupScreen(
                         SetupStep.Recommendations -> {
                             HeaderIcon(Icons.Outlined.Search)
                             Text("Recommended installations", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            Text(
+                                statusText,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
                             if (busy) {
                                 LinearProgressIndicator(Modifier.fillMaxWidth())
-                                Text("Looking for the best setup for your phone…", style = MaterialTheme.typography.bodySmall)
+                                Text("Looking for Magisk, Android version, and the matching LSPosed package…", style = MaterialTheme.typography.bodySmall)
+                                RecommendationGallery(recommendations)
                             } else {
                                 Text(
-                                    "RootDeck found these setup steps for your device. Start with LSPosed.",
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    "RootDeck found these setup steps for your device. Start with LSPosed, then reboot and enable the RootDeck module.",
+                                    style = MaterialTheme.typography.bodySmall,
                                 )
                                 RecommendationGallery(recommendations)
                                 installState.releaseName?.let {
@@ -149,6 +159,7 @@ fun StartupSetupScreen(
                                                     onProgress = { downloadProgress = it },
                                                 )
                                                 busy = false
+                                                statusText = installState.message ?: installState.error ?: "Install finished."
                                                 step = if (installState.error == null) SetupStep.Success else SetupStep.Failed
                                             }
                                         },
@@ -170,16 +181,20 @@ fun StartupSetupScreen(
                                 Text("Preparing download…", style = MaterialTheme.typography.bodySmall)
                             }
                             SetupFlow(current = 1)
-                            Text("After the download, Magisk installs the module. Please allow any Magisk prompt.", style = MaterialTheme.typography.bodyMedium)
+                            Text("After the download, Magisk installs the module. Please allow any Magisk prompt. RootDeck will then show either a success screen or a clear failure reason.", style = MaterialTheme.typography.bodyMedium)
+                            Text(statusText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
 
                         SetupStep.Success -> {
                             HeaderIcon(Icons.Outlined.CheckCircle)
                             Text("LSPosed setup finished", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                             Text(
-                                "Download and Magisk install completed successfully. One restart is required before LSPosed can work.",
+                                installState.message ?: "Download and Magisk install completed successfully. One restart is required before LSPosed can work.",
                                 style = MaterialTheme.typography.bodyMedium,
                             )
+                            installState.downloadedFile?.let {
+                                AssistChip(onClick = {}, label = { Text("Installed from downloaded ZIP") })
+                            }
                             SetupFlow(current = 3)
                             NextStepCard(
                                 title = "What to do next",
@@ -187,7 +202,7 @@ fun StartupSetupScreen(
                                     "Restart your phone.",
                                     "After reboot, open the LSPosed notification or LSPosed Manager.",
                                     "Enable the RootDeck module and scope it only to your own test apps.",
-                                    "Open Video Test Feed to choose a video file and front/back camera target.",
+                                    "Open Video Test Feed to choose a video file, front/back camera target, and crop/resize mode.",
                                 ),
                             )
                             Button(onClick = onOpenVideoTestFeed, modifier = Modifier.fillMaxWidth()) { Text("Set up Video Test Feed") }
@@ -201,6 +216,7 @@ fun StartupSetupScreen(
                                 "RootDeck could not finish the LSPosed install. Nothing was changed unless Magisk reported a successful install.",
                                 style = MaterialTheme.typography.bodyMedium,
                             )
+                            installState.message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                             installState.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                             NextStepCard(
                                 title = "Try this",

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -70,7 +71,9 @@ private fun RootDeckApp(
     // Top-level tab selection + the current sub-screen pushed on top of Tools.
     var tab by remember { mutableStateOf<Dest>(Dest.Dashboard) }
     var subscreen by remember { mutableStateOf<Dest?>(null) }
-    var setupFinishedForSession by remember { mutableStateOf(repo.rootMode.value == RootMode.ROOTDECK_ONLY) }
+    val context = LocalContext.current
+    val setupPrefs = remember { context.getSharedPreferences("rootdeck_startup_setup", android.content.Context.MODE_PRIVATE) }
+    var setupFinishedForSession by remember { mutableStateOf(setupPrefs.getBoolean("completed_or_skipped", false)) }
 
     fun navigateTool(tool: BasicTool) {
         subscreen = when (tool.id) {
@@ -103,11 +106,15 @@ private fun RootDeckApp(
         },
     ) { padding ->
         Surface(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (!setupFinishedForSession && repo.rootMode.value != RootMode.ROOTDECK_ONLY) {
+            if (!setupFinishedForSession) {
                 StartupSetupScreen(
                     repo = repo,
-                    onFinish = { setupFinishedForSession = true },
+                    onFinish = {
+                        setupPrefs.edit().putBoolean("completed_or_skipped", true).apply()
+                        setupFinishedForSession = true
+                    },
                     onOpenVideoTestFeed = {
+                        setupPrefs.edit().putBoolean("completed_or_skipped", true).apply()
                         setupFinishedForSession = true
                         tab = Dest.Tools
                         subscreen = Dest.VideoTestFeed

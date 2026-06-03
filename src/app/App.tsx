@@ -274,12 +274,12 @@ export default function App() {
                   <div>
                     <div className="text-sm font-semibold text-emerald-100">RootDeck APK download · {CURRENT_APP_VERSION}</div>
                     <p className="mt-2 text-sm leading-6 text-slate-400">
-                      Updated RootDeck Android 14+ APK with guided root access, recommended LSPosed setup, download progress, and success instructions.
+                      Updated RootDeck Android 14+ APK with the Video Test Feed crop/resize editor, black bars, stretch, fill/crop, and LSPosed setup handoff.
                     </p>
                   </div>
                   <Download className="size-5 shrink-0 text-emerald-300 transition group-hover:translate-y-0.5" />
                 </div>
-                <div className="mt-4 font-mono text-xs text-emerald-200/80">rootdeck-debug.apk · latest release</div>
+                <div className="mt-4 font-mono text-xs text-emerald-200/80">rootdeck-debug.apk · latest tag · video crop/resize build</div>
               </a>
 
               <LsposedDownloadCard />
