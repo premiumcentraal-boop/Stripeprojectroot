@@ -1,12 +1,11 @@
 package com.rootdeck.app.xposed
 
-import android.content.Context
-import de.robv.android.xposed.AndroidAppHelper
 import de.robv.android.xposed.IXposedHookLoadPackage
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam
+import java.io.File
 
 /**
  * RootDeck internal-only Video Test Feed bridge.
@@ -22,7 +21,7 @@ class VideoInjectionXposedModule : IXposedHookLoadPackage {
         if (lpparam.packageName != ROOTDECK_PACKAGE) return
 
         XposedBridge.log("RootDeck Video Test Feed module active in internal sandbox package: ${lpparam.packageName}")
-        logSavedVideoFeedConfig()
+        logSavedVideoFeedConfig(lpparam)
 
         try {
             hookCamera1(lpparam)
@@ -39,7 +38,7 @@ class VideoInjectionXposedModule : IXposedHookLoadPackage {
             XposedBridge.hookAllMethods(cameraClass, "open", object : XC_MethodHook() {
                 override fun afterHookedMethod(param: MethodHookParam) {
                     XposedBridge.log("RootDeck sandbox Camera1 open observed; internal video feed config is available to RootDeck only.")
-                    logSavedVideoFeedConfig()
+                    logSavedVideoFeedConfig(lpparam)
                 }
             })
 
@@ -65,7 +64,7 @@ class VideoInjectionXposedModule : IXposedHookLoadPackage {
             XposedBridge.hookAllMethods(cameraManagerClass, "openCamera", object : XC_MethodHook() {
                 override fun beforeHookedMethod(param: MethodHookParam) {
                     XposedBridge.log("RootDeck sandbox Camera2 openCamera observed; scoped internal test config follows.")
-                    logSavedVideoFeedConfig()
+                    logSavedVideoFeedConfig(lpparam)
                 }
             })
 
@@ -80,17 +79,21 @@ class VideoInjectionXposedModule : IXposedHookLoadPackage {
         }
     }
 
-    private fun logSavedVideoFeedConfig() {
+    private fun logSavedVideoFeedConfig(lpparam: LoadPackageParam) {
         runCatching {
-            val app = AndroidAppHelper.currentApplication() ?: return@runCatching
-            val prefs = app.getSharedPreferences(VIDEO_FEED_PREFS, Context.MODE_PRIVATE)
-            val video = prefs.getString("video_uri", null) ?: "not selected"
-            val camera = prefs.getString("target_camera", "Front Camera")
-            val fit = prefs.getString("fit_mode", "FitBlackBars")
-            val crop = prefs.getString("crop_anchor", "Center")
-            val output = prefs.getString("output_size", "MatchCamera")
-            val repeat = prefs.getBoolean("repeat_playback", true)
-            val requested = prefs.getBoolean("test_run_requested", false)
+            val prefsFile = File(lpparam.appInfo.dataDir, "shared_prefs/$VIDEO_FEED_PREFS.xml")
+            if (!prefsFile.exists()) {
+                XposedBridge.log("RootDeck internal Video Test Feed config has not been saved yet.")
+                return@runCatching
+            }
+            val xml = prefsFile.readText()
+            val video = xmlPref(xml, "video_uri") ?: "not selected"
+            val camera = xmlPref(xml, "target_camera") ?: "Front Camera"
+            val fit = xmlPref(xml, "fit_mode") ?: "FitBlackBars"
+            val crop = xmlPref(xml, "crop_anchor") ?: "Center"
+            val output = xmlPref(xml, "output_size") ?: "MatchCamera"
+            val repeat = xmlBool(xml, "repeat_playback", true)
+            val requested = xmlBool(xml, "test_run_requested", false)
             XposedBridge.log(
                 "RootDeck internal Video Test Feed config: video=$video, camera=$camera, fit=$fit, crop=$crop, output=$output, repeat=$repeat, testRunRequested=$requested"
             )
@@ -98,6 +101,30 @@ class VideoInjectionXposedModule : IXposedHookLoadPackage {
             XposedBridge.log("RootDeck could not read internal Video Test Feed config yet: ${error.message}")
         }
     }
+
+    private fun xmlPref(xml: String, name: String): String? {
+        val escapedName = Regex.escape(name)
+        return Regex("<string name=\"$escapedName\">(.*?)</string>", RegexOption.DOT_MATCHES_ALL)
+            .find(xml)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.replace("&amp;", "&")
+            ?.replace("&lt;", "<")
+            ?.replace("&gt;", ">")
+            ?.replace("&quot;", "\"")
+            ?.replace("&apos;", "'")
+    }
+
+    private fun xmlBool(xml: String, name: String, default: Boolean): Boolean {
+        val escapedName = Regex.escape(name)
+        return Regex("<boolean name=\"$escapedName\" value=\"(true|false)\" />")
+            .find(xml)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.toBooleanStrictOrNull()
+            ?: default
+    }
+
 
     private companion object {
         const val ROOTDECK_PACKAGE = "com.rootdeck.app"
