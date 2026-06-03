@@ -15,6 +15,16 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: "v0.8.0",
+    name: "LSPosed Installer",
+    date: "2026-06-03",
+    notes: [
+      "Added LSPosed Installer tool for Magisk devices.",
+      "Detects Magisk version and selects the matching LSPosed Zygisk or Riru release ZIP from the official LSPosed releases.",
+      "Downloads the module and installs it through Magisk with RootDeck root-mode gating and command logging.",
+    ],
+  },
+  {
     version: "v0.7.0",
     name: "Video Test Feed (Camera Injection)",
     date: "2026-06-02",

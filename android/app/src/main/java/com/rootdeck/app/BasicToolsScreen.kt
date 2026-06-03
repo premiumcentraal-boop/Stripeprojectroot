@@ -34,6 +34,7 @@ val basicTools = listOf(
     BasicTool("privacy", "Process Privacy Guard", Icons.Outlined.ViewList, implemented = true),
     BasicTool("doppelganger", "Doppelganger", Icons.Outlined.ContentCopy, implemented = true),
     BasicTool("video-injection", "Video Test Feed", Icons.Outlined.Videocam, implemented = true),
+    BasicTool("lsposed-installer", "LSPosed Installer", Icons.Outlined.Extension, implemented = true),
     BasicTool("upload", "Upload File", Icons.Outlined.UploadFile, implemented = false),
     BasicTool("keepalive", "Process Keep-Alive", Icons.Outlined.Bolt, implemented = false),
     BasicTool("autostart", "App Auto-Start", Icons.Outlined.PlayCircle, implemented = false),

@@ -128,7 +128,12 @@ class RootRepository(private val app: android.app.Application) : ViewModel() {
      * Run a root command through the user's root provider. The caller MUST have
      * already shown a confirmation dialog.
      */
-    fun runConfirmedCommand(title: String, command: String, onDone: (CommandResult) -> Unit = {}) {
+    fun runConfirmedCommand(
+        title: String,
+        command: String,
+        timeoutSeconds: Long = 10,
+        onDone: (CommandResult) -> Unit = {},
+    ) {
         if (rootMode.value != RootMode.ROOTDECK_ONLY) {
             val r = CommandResult(command, -1, "", "RootDeck global root mode is disabled.",
                 System.currentTimeMillis())
@@ -138,7 +143,7 @@ class RootRepository(private val app: android.app.Application) : ViewModel() {
             return
         }
         viewModelScope.launch {
-            val result = RootShell.runRootCommand(command)
+            val result = RootShell.runRootCommand(command, timeoutSeconds = timeoutSeconds)
             lastResult.value = result
             log(
                 title = title,
