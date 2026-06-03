@@ -17,7 +17,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Cameraswitch
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.*
@@ -80,7 +79,7 @@ fun SandboxCameraScreen(onBack: () -> Unit) {
                     OutlinedButton(onClick = {
                         lensFacing = if (lensFacing == CameraCharacteristics.LENS_FACING_FRONT) CameraCharacteristics.LENS_FACING_BACK else CameraCharacteristics.LENS_FACING_FRONT
                     }) {
-                        Icon(Icons.Outlined.Cameraswitch, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Outlined.Videocam, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("Switch")
                     }
