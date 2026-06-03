@@ -22,6 +22,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Ensure LSPosed project source exists
+        run: |
+          set -euxo pipefail
+          if [ -f LSPosed-master/settings.gradle.kts ]; then
+            echo "Using LSPosed-master from this repository."
+          else
+            echo "LSPosed-master was not found in this checkout; cloning LSPosed source."
+            rm -rf LSPosed-master
+            git clone --depth 1 --recursive https://github.com/LSPosed/LSPosed.git LSPosed-master
+          fi
+
       - name: Verify LSPosed project exists
         run: |
           test -f LSPosed-master/settings.gradle.kts
