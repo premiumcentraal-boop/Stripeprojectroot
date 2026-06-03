@@ -1,9 +1,12 @@
 package com.rootdeck.app
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.hardware.camera2.CameraCharacteristics
+import android.view.TextureView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,6 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import android.widget.VideoView
 
 private const val VIDEO_MODULE_CLASS = "com.rootdeck.app.xposed.VideoInjectionXposedModule"
@@ -42,6 +46,18 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
     var outputSize by remember { mutableStateOf(CameraOutputSize.MatchCamera) }
     var setupSaved by remember { mutableStateOf(false) }
     var testRunStatus by remember { mutableStateOf("Not started") }
+    var previewMode by remember { mutableStateOf(SandboxMode.TestFeed) }
+    var previewLensFacing by remember { mutableStateOf(CameraCharacteristics.LENS_FACING_FRONT) }
+    var hasCameraPermission by remember {
+        mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
+    }
+    val previewCameraController = remember { SandboxCameraController() }
+    DisposableEffect(previewMode, previewLensFacing) {
+        onDispose { previewCameraController.close() }
+    }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        hasCameraPermission = granted
+    }
     val repeatPlayback = true
     var lsposedStatus by remember { mutableStateOf(readLsposedStatus(context)) }
 
@@ -215,13 +231,19 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(
                         selected = targetCamera == "Front Camera",
-                        onClick = { targetCamera = "Front Camera" },
+                        onClick = {
+                            targetCamera = "Front Camera"
+                            previewLensFacing = CameraCharacteristics.LENS_FACING_FRONT
+                        },
                     )
                     Text("Front Camera")
                     Spacer(Modifier.width(16.dp))
                     RadioButton(
                         selected = targetCamera == "Back Camera",
-                        onClick = { targetCamera = "Back Camera" },
+                        onClick = {
+                            targetCamera = "Back Camera"
+                            previewLensFacing = CameraCharacteristics.LENS_FACING_BACK
+                        },
                     )
                     Text("Back Camera")
                 }
@@ -286,20 +308,82 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
                 ElevatedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Preview preparation", style = MaterialTheme.typography.labelMedium)
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(132.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Outlined.AspectRatio, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                Text(fitMode.previewHeadline(cropAnchor), style = MaterialTheme.typography.bodyMedium)
-                                Text(outputSize.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = previewMode == SandboxMode.RealCamera,
+                                onClick = { previewMode = SandboxMode.RealCamera },
+                                label = { Text("Real camera") },
+                            )
+                            FilterChip(
+                                selected = previewMode == SandboxMode.TestFeed,
+                                onClick = { previewMode = SandboxMode.TestFeed },
+                                label = { Text("Test video feed") },
+                            )
+                        }
+                        if (previewMode == SandboxMode.RealCamera) {
+                            if (!hasCameraPermission) {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().aspectRatio(9f / 16f).background(MaterialTheme.colorScheme.surfaceVariant),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text("Camera permission needed", style = MaterialTheme.typography.bodyMedium)
+                                        Button(onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }) {
+                                            Text("Allow Camera")
+                                        }
+                                    }
+                                }
+                            } else {
+                                AndroidView(
+                                    modifier = Modifier.fillMaxWidth().aspectRatio(9f / 16f),
+                                    factory = { viewContext ->
+                                        TextureView(viewContext).also { texture ->
+                                            startSandboxCamera(viewContext, texture, previewLensFacing, previewCameraController)
+                                        }
+                                    },
+                                    update = { texture ->
+                                        startSandboxCamera(texture.context, texture, previewLensFacing, previewCameraController)
+                                    },
+                                )
+                            }
+                        } else {
+                            if (selectedVideoUri != null) {
+                                AndroidView(
+                                    modifier = Modifier.fillMaxWidth().aspectRatio(9f / 16f),
+                                    factory = { viewContext ->
+                                        VideoView(viewContext).apply {
+                                            setVideoURI(selectedVideoUri)
+                                            setOnPreparedListener { player ->
+                                                player.isLooping = true
+                                                start()
+                                            }
+                                            setOnCompletionListener { start() }
+                                        }
+                                    },
+                                    update = { videoView ->
+                                        videoView.setVideoURI(selectedVideoUri)
+                                        videoView.setOnPreparedListener { player ->
+                                            player.isLooping = true
+                                            videoView.start()
+                                        }
+                                        videoView.setOnCompletionListener { videoView.start() }
+                                    },
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().aspectRatio(9f / 16f).background(MaterialTheme.colorScheme.surfaceVariant),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(Icons.Outlined.AspectRatio, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                        Text("Select a video to preview test feed", style = MaterialTheme.typography.bodyMedium)
+                                        Text(outputSize.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
                             }
                         }
-                        Text("$targetCamera · ${fitMode.label} · ${outputSize.label}", style = MaterialTheme.typography.bodySmall)
+                        val previewModeLabel = if (previewMode == SandboxMode.RealCamera) "Real camera" else "Test video feed"
+                        Text("$targetCamera · ${fitMode.label} · ${outputSize.label} · $previewModeLabel", style = MaterialTheme.typography.bodySmall)
                         Text(fitMode.previewText, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("Saved setup: ${fitMode.editingSummary(cropAnchor)}", style = MaterialTheme.typography.labelSmall)
                         Text("Looping: selected videos are saved with repeat playback enabled, so the feed restarts automatically when the file ends.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -355,58 +439,11 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
 
 
         ElevatedCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.Movie, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(8.dp))
-                    Text("5. Internal Test Camera Preview", style = MaterialTheme.typography.titleSmall)
-                }
-                Text(
-                    "Controlled RootDeck-only test harness. This does not spoof another app. It plays your selected video as a local test feed and loops it automatically so you can verify source, repeat playback, and framing before LSPosed scoped testing.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                if (selectedVideoUri != null) {
-                    AndroidView(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(220.dp),
-                        factory = { viewContext ->
-                            VideoView(viewContext).apply {
-                                setVideoURI(selectedVideoUri)
-                                setOnPreparedListener { player ->
-                                    player.isLooping = true
-                                    start()
-                                }
-                                setOnCompletionListener { start() }
-                            }
-                        },
-                        update = { videoView ->
-                            videoView.setVideoURI(selectedVideoUri)
-                            videoView.setOnPreparedListener { player ->
-                                player.isLooping = true
-                                videoView.start()
-                            }
-                            videoView.setOnCompletionListener { videoView.start() }
-                        },
-                    )
-                    StatusRow("Internal preview", "Playing selected video on repeat")
-                    StatusRow("LSPosed spoofing", "Not performed in RootDeck preview")
-                } else {
-                    Text(
-                        "Select a video first to start the internal test camera preview.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-
-        ElevatedCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.VerifiedUser, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(8.dp))
-                    Text("6. LSPosed Test Readiness", style = MaterialTheme.typography.titleSmall)
+                    Text("5. LSPosed Test Readiness", style = MaterialTheme.typography.titleSmall)
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(

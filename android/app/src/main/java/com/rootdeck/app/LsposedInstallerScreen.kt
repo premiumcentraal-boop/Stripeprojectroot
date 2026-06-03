@@ -2,6 +2,7 @@ package com.rootdeck.app
 
 import android.content.Context
 import android.os.Build
+import android.content.pm.PackageManager
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -245,10 +246,66 @@ data class LsposedInstallState(
     val downloadedFile: String? = null,
     val message: String? = null,
     val error: String? = null,
+    val lsposedInstalled: Boolean = false,
+    val rebootPending: Boolean = false,
+    val lsposedManagerVersion: String? = null,
 )
 
 object LsposedInstaller {
+    private const val SETUP_PREFS = "rootdeck_lsposed_setup"
+    private const val KEY_INSTALL_PENDING_REBOOT = "install_pending_reboot"
+    private const val KEY_SETUP_COMPLETE = "setup_complete"
+
+    fun installedLsposedManagerVersion(context: Context): String? {
+        val possibleManagerPackages = listOf("org.lsposed.manager", "org.lsposed.manager.debug")
+        return possibleManagerPackages.firstNotNullOfOrNull { packageName ->
+            runCatching {
+                val info = context.packageManager.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES)
+                info.versionName ?: packageName
+            }.getOrNull()
+        }
+    }
+
+    fun isLsposedManagerInstalled(context: Context): Boolean = installedLsposedManagerVersion(context) != null
+
+    fun markSetupComplete(context: Context) {
+        context.getSharedPreferences(SETUP_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_SETUP_COMPLETE, true)
+            .putBoolean(KEY_INSTALL_PENDING_REBOOT, false)
+            .apply()
+    }
+
+    fun markInstallPendingReboot(context: Context) {
+        context.getSharedPreferences(SETUP_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_INSTALL_PENDING_REBOOT, true)
+            .putBoolean(KEY_SETUP_COMPLETE, false)
+            .apply()
+    }
+
+    fun isInstallPendingReboot(context: Context): Boolean =
+        context.getSharedPreferences(SETUP_PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_INSTALL_PENDING_REBOOT, false)
+
+    fun shouldSkipStartupSetup(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(SETUP_PREFS, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_SETUP_COMPLETE, false)
+    }
+
     suspend fun check(context: Context, repo: RootRepository): LsposedInstallState = withContext(Dispatchers.IO) {
+        val lsposedVersion = installedLsposedManagerVersion(context)
+        val lsposedInstalled = lsposedVersion != null
+        val rebootPending = isInstallPendingReboot(context) && !lsposedInstalled
+        if (lsposedInstalled) {
+            return@withContext LsposedInstallState(
+                busy = false,
+                message = "LSPosed is installed successfully.",
+                lsposedInstalled = true,
+                rebootPending = false,
+                lsposedManagerVersion = lsposedVersion,
+            )
+        }
         val magisk = RootShell.runRootCommand("magisk -V 2>/dev/null || magisk -v 2>/dev/null", timeoutSeconds = 8)
         val magiskVersion = magisk.stdout.trim().ifBlank { magisk.stderr.trim() }.ifBlank { null }
         val preferZygisk = parseMagiskVersionCode(magiskVersion) >= 24_000
@@ -256,8 +313,9 @@ object LsposedInstaller {
             return@withContext LsposedInstallState(
                 busy = false,
                 magiskVersion = magiskVersion,
-                message = "Could not read official LSPosed release metadata.",
-                error = error.message ?: "Unknown release lookup error",
+                message = if (rebootPending) "LSPosed module install was sent to Magisk. Reboot is still needed." else "Could not read official LSPosed release metadata.",
+                error = if (rebootPending) null else error.message ?: "Unknown release lookup error",
+                rebootPending = rebootPending,
             )
         }
         LsposedInstallState(
@@ -265,12 +323,15 @@ object LsposedInstaller {
             magiskVersion = magiskVersion,
             releaseName = release.first,
             assetUrl = release.second,
-            message = if (magisk.success) {
+            message = if (rebootPending) {
+                "LSPosed install was completed in Magisk. Reboot the device once; after reboot RootDeck will detect LSPosed and skip this setup."
+            } else if (magisk.success) {
                 if (preferZygisk) "Magisk detected. Selected LSPosed Zygisk build for this Magisk version." else "Magisk detected. Selected LSPosed Riru build for this older Magisk version."
             } else {
                 "Magisk command was not detected through root. Install Magisk or enable RootDeck root mode first."
             },
-            error = if (magisk.success) null else magisk.stderr.ifBlank { "Magisk not detected." },
+            error = if (magisk.success || rebootPending) null else magisk.stderr.ifBlank { "Magisk not detected." },
+            rebootPending = rebootPending,
         )
     }
 
@@ -295,11 +356,13 @@ object LsposedInstaller {
         repo.runConfirmedCommand("Install LSPosed Magisk module", installCommand, timeoutSeconds = 120) { done.complete(it) }
         val result = done.await()
         resultState = if (result.success) {
+            markInstallPendingReboot(context)
             current.copy(
                 busy = false,
                 downloadedFile = out.absolutePath,
-                message = "LSPosed module installed through Magisk. Reboot is required.",
+                message = "LSPosed module installed through Magisk. Reboot is required. After reboot RootDeck will detect LSPosed and skip this setup.",
                 error = null,
+                rebootPending = true,
             )
         } else {
             current.copy(

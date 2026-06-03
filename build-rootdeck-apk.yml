@@ -48,8 +48,8 @@ jobs:
         run: |
           AAPT="$ANDROID_HOME/build-tools/34.0.0/aapt"
           "$AAPT" dump badging android/app/build/outputs/apk/debug/app-debug.apk | tee apk-badging.txt
-          grep "versionName='0.19.0'" apk-badging.txt
-          grep "versionCode='19'" apk-badging.txt
+          grep "versionName='0.22.0'" apk-badging.txt
+          grep "versionCode='22'" apk-badging.txt
 
       - name: Rename APK for Release
         run: |
@@ -60,7 +60,7 @@ jobs:
         with:
           tag_name: latest
           name: Latest RootDeck Build
-          body: "Automated build from GitHub Actions containing the latest RootDeck APK. Current expected app version: v0.19.0 / Android versionName 0.19.0."
+          body: "Automated build from GitHub Actions containing the latest RootDeck APK. Current expected app version: v0.22.0 / Android versionName 0.22.0."
           files: rootdeck-debug.apk
           prerelease: true
           make_latest: true

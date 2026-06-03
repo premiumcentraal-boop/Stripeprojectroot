@@ -14,7 +14,7 @@ export function DownloadButton() {
         <Download className="size-4" /> {BUTTON_TEXT}
       </a>
       <span className="mt-2 text-xs text-zinc-400 inline-flex items-center gap-1">
-        <Github className="size-3" /> Status: RootDeck v0.13.0 APK served from the latest tag release asset
+        <Github className="size-3" /> Status: RootDeck {CURRENT_APP_VERSION} APK served from the latest tag release asset
       </span>
     </div>
   );

@@ -74,7 +74,9 @@ private fun RootDeckApp(
     var subscreen by remember { mutableStateOf<Dest?>(null) }
     val context = LocalContext.current
     val setupPrefs = remember { context.getSharedPreferences("rootdeck_startup_setup", android.content.Context.MODE_PRIVATE) }
-    var setupFinishedForSession by remember { mutableStateOf(setupPrefs.getBoolean("completed_or_skipped", false)) }
+    var setupFinishedForSession by remember {
+        mutableStateOf(setupPrefs.getBoolean("completed_or_skipped", false) || LsposedInstaller.shouldSkipStartupSetup(context))
+    }
 
     fun navigateTool(tool: BasicTool) {
         subscreen = when (tool.id) {

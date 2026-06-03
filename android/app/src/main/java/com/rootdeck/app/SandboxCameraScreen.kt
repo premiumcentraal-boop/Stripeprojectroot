@@ -41,6 +41,10 @@ fun SandboxCameraScreen(onBack: () -> Unit) {
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         hasCameraPermission = granted
     }
+    val cameraController = remember { SandboxCameraController() }
+    DisposableEffect(lensFacing, selectedMode) {
+        onDispose { cameraController.close() }
+    }
     val prefs = remember { context.getSharedPreferences(SANDBOX_VIDEO_FEED_PREFS, Context.MODE_PRIVATE) }
     val savedVideoUri = remember { prefs.getString("video_uri", null)?.let(Uri::parse) }
     val repeatPlayback = prefs.getBoolean("repeat_playback", true)
@@ -96,9 +100,9 @@ fun SandboxCameraScreen(onBack: () -> Unit) {
                         Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) { Text("Allow Camera Permission") }
                     } else {
                         AndroidView(
-                            modifier = Modifier.fillMaxWidth().height(320.dp),
-                            factory = { viewContext -> TextureView(viewContext).also { texture -> startSandboxCamera(viewContext, texture, lensFacing) } },
-                            update = { texture -> startSandboxCamera(texture.context, texture, lensFacing) },
+                            modifier = Modifier.fillMaxWidth().aspectRatio(9f / 16f),
+                            factory = { viewContext -> TextureView(viewContext).also { texture -> startSandboxCamera(viewContext, texture, lensFacing, cameraController) } },
+                            update = { texture -> startSandboxCamera(texture.context, texture, lensFacing, cameraController) },
                         )
                     }
                 } else {
@@ -106,7 +110,7 @@ fun SandboxCameraScreen(onBack: () -> Unit) {
                         Text("No saved Video Test Feed source yet. Go to Video Test Feed, select a video, then tap Save Video Feed Setup.", style = MaterialTheme.typography.bodySmall)
                     } else {
                         AndroidView(
-                            modifier = Modifier.fillMaxWidth().height(320.dp),
+                            modifier = Modifier.fillMaxWidth().aspectRatio(9f / 16f),
                             factory = { viewContext ->
                                 VideoView(viewContext).apply {
                                     setVideoURI(savedVideoUri)
@@ -146,7 +150,7 @@ fun SandboxCameraScreen(onBack: () -> Unit) {
     }
 }
 
-private enum class SandboxMode { RealCamera, TestFeed }
+enum class SandboxMode { RealCamera, TestFeed }
 
 @Composable
 private fun StatusLine(label: String, value: String) {
@@ -156,50 +160,67 @@ private fun StatusLine(label: String, value: String) {
     }
 }
 
-private fun startSandboxCamera(context: Context, textureView: TextureView, lensFacing: Int) {
+fun startSandboxCamera(context: Context, textureView: TextureView, lensFacing: Int, controller: SandboxCameraController) {
     if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) return
     if (!textureView.isAvailable) {
         textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
             override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-                openSandboxCamera(context, textureView, lensFacing)
+                openSandboxCamera(context, textureView, lensFacing, controller)
             }
             override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) = Unit
             override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean = true
             override fun onSurfaceTextureUpdated(surface: SurfaceTexture) = Unit
         }
     } else {
-        openSandboxCamera(context, textureView, lensFacing)
+        openSandboxCamera(context, textureView, lensFacing, controller)
     }
 }
 
-private fun openSandboxCamera(context: Context, textureView: TextureView, lensFacing: Int) {
+private fun openSandboxCamera(context: Context, textureView: TextureView, lensFacing: Int, controller: SandboxCameraController) {
     val manager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
     val cameraId = manager.cameraIdList.firstOrNull { id ->
         manager.getCameraCharacteristics(id).get(CameraCharacteristics.LENS_FACING) == lensFacing
     } ?: return
+    controller.close()
     val surfaceTexture = textureView.surfaceTexture ?: return
-    surfaceTexture.setDefaultBufferSize(1280, 720)
+    surfaceTexture.setDefaultBufferSize(720, 1280)
     val surface = Surface(surfaceTexture)
     try {
         manager.openCamera(cameraId, object : CameraDevice.StateCallback() {
             override fun onOpened(camera: CameraDevice) {
+                controller.camera = camera
                 val request = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
                     addTarget(surface)
                     set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
                 }
                 camera.createCaptureSession(listOf(surface), object : CameraCaptureSession.StateCallback() {
                     override fun onConfigured(session: CameraCaptureSession) {
+                        controller.session = session
                         session.setRepeatingRequest(request.build(), null, null)
                     }
                     override fun onConfigureFailed(session: CameraCaptureSession) {
-                        camera.close()
+                        controller.close()
                     }
                 }, null)
             }
-            override fun onDisconnected(camera: CameraDevice) { camera.close() }
-            override fun onError(camera: CameraDevice, error: Int) { camera.close() }
+            override fun onDisconnected(camera: CameraDevice) { controller.close() }
+            override fun onError(camera: CameraDevice, error: Int) { controller.close() }
         }, null)
     } catch (_: SecurityException) {
         // Permission revoked while opening camera.
+    }
+}
+
+
+class SandboxCameraController {
+    var camera: CameraDevice? = null
+    var session: CameraCaptureSession? = null
+
+    fun close() {
+        runCatching { session?.stopRepeating() }
+        runCatching { session?.close() }
+        runCatching { camera?.close() }
+        session = null
+        camera = null
     }
 }

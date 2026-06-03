@@ -23,7 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
-private enum class SetupStep { RootAccess, Recommendations, Installing, Success, Failed }
+private enum class SetupStep { RootAccess, Recommendations, Installing, Success, Failed, Installed }
 
 private data class RecommendedInstall(
     val title: String,
@@ -51,7 +51,12 @@ fun StartupSetupScreen(
         RecommendedInstall(
             title = "LSPosed",
             subtitle = "Required for RootDeck module features on Magisk devices.",
-            status = if (installState.assetUrl != null) "Ready to install" else "Scan needed",
+            status = when {
+                installState.lsposedInstalled -> "Installed"
+                installState.rebootPending -> "Reboot needed"
+                installState.assetUrl != null -> "Ready to install"
+                else -> "Scan needed"
+            },
             icon = Icons.Outlined.Extension,
             primary = true,
         ),
@@ -64,7 +69,7 @@ fun StartupSetupScreen(
         RecommendedInstall(
             title = "Reboot after install",
             subtitle = "LSPosed becomes active after restarting your phone.",
-            status = "Final step",
+            status = if (installState.rebootPending) "Needed now" else if (installState.lsposedInstalled) "Done" else "Final step",
             icon = Icons.Outlined.RestartAlt,
         ),
     )
@@ -76,6 +81,9 @@ fun StartupSetupScreen(
             statusText = "Scanning your device and checking the recommended LSPosed install…"
             installState = LsposedInstaller.check(context, repo)
             statusText = installState.message ?: "Scan finished. Review the recommended installs below."
+            if (installState.lsposedInstalled) {
+                step = SetupStep.Installed
+            }
             busy = false
         }
     }
@@ -143,10 +151,20 @@ fun StartupSetupScreen(
                                 installState.error?.let {
                                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                                 }
+                                if (installState.rebootPending) {
+                                    NextStepCard(
+                                        title = "Reboot still needed",
+                                        steps = listOf(
+                                            "Restart your phone once to activate LSPosed.",
+                                            "Open RootDeck again after reboot.",
+                                            "RootDeck will detect LSPosed and will not recommend installing it again.",
+                                        ),
+                                    )
+                                }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     OutlinedButton(onClick = { scanRecommendations() }, enabled = !busy) { Text("Scan again") }
                                     Button(
-                                        enabled = installState.assetUrl != null && !busy,
+                                        enabled = installState.assetUrl != null && !busy && !installState.rebootPending,
                                         onClick = {
                                             step = SetupStep.Installing
                                             busy = true
@@ -163,9 +181,13 @@ fun StartupSetupScreen(
                                                 step = if (installState.error == null) SetupStep.Success else SetupStep.Failed
                                             }
                                         },
-                                    ) { Text("Install LSPosed") }
+                                    ) { Text(if (installState.rebootPending) "Reboot Required" else "Install LSPosed") }
                                 }
-                                TextButton(onClick = onFinish, modifier = Modifier.fillMaxWidth()) { Text("Not now") }
+                                TextButton(
+                                    onClick = onFinish,
+                                    enabled = !installState.rebootPending,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) { Text(if (installState.rebootPending) "Reboot before continuing" else "Not now") }
                             }
                         }
 
@@ -205,8 +227,35 @@ fun StartupSetupScreen(
                                     "Open Video Test Feed to choose a video file, front/back camera target, and crop/resize mode.",
                                 ),
                             )
-                            Button(onClick = onOpenVideoTestFeed, modifier = Modifier.fillMaxWidth()) { Text("Set up Video Test Feed") }
-                            OutlinedButton(onClick = onFinish, modifier = Modifier.fillMaxWidth()) { Text("Continue to RootDeck") }
+                            Button(onClick = onOpenVideoTestFeed, enabled = !installState.rebootPending, modifier = Modifier.fillMaxWidth()) { Text(if (installState.rebootPending) "Reboot first" else "Set up Video Test Feed") }
+                            OutlinedButton(
+                                onClick = onFinish,
+                                enabled = !installState.rebootPending,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text(if (installState.rebootPending) "Reboot before continuing" else "Continue to RootDeck") }
+                        }
+
+
+                        SetupStep.Installed -> {
+                            val versionLabel = installState.lsposedManagerVersion ?: "Detected"
+                            HeaderIcon(Icons.Outlined.CheckCircle)
+                            Text("LSPosed installed", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            Text(
+                                "LSPosed is successfully installed and detected on this device. No actions are needed.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                            )
+                            AssistChip(
+                                onClick = {},
+                                label = { Text("Version: $versionLabel") },
+                            )
+                            Button(
+                                onClick = {
+                                    LsposedInstaller.markSetupComplete(context)
+                                    onFinish()
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text("Continue") }
                         }
 
                         SetupStep.Failed -> {
