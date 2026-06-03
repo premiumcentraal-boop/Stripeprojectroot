@@ -28,6 +28,7 @@ private sealed class Dest(val title: String) {
     object ProcessPrivacy : Dest("Process Privacy Guard")
     object Doppelganger : Dest("Doppelganger")
     object VideoTestFeed : Dest("Video Test Feed")
+    object SandboxCamera : Dest("Sandbox Camera")
     object LsposedInstaller : Dest("LSPosed Installer")
     data class Planned(val tool: BasicTool) : Dest(tool.title)
     data class PlannedModule(val tool: PlannedBasicTool) : Dest(tool.safeName)
@@ -83,6 +84,7 @@ private fun RootDeckApp(
             "privacy" -> Dest.ProcessPrivacy
             "doppelganger" -> Dest.Doppelganger
             "video-injection" -> Dest.VideoTestFeed
+            "sandbox-camera" -> Dest.SandboxCamera
             "lsposed-installer" -> Dest.LsposedInstaller
             else -> Dest.Planned(tool)
         }
@@ -157,6 +159,7 @@ private fun RootDeckApp(
                 Dest.ProcessPrivacy -> ProcessPrivacyScreen(repo, privacy, onBack = { subscreen = null })
                 Dest.Doppelganger -> DoppelgangerScreen(repo, doppel, onBack = { subscreen = null })
                 Dest.VideoTestFeed -> VideoTestFeedScreen(onBack = { subscreen = null })
+                Dest.SandboxCamera -> SandboxCameraScreen(onBack = { subscreen = null })
                 Dest.LsposedInstaller -> LsposedInstallerScreen(repo, onBack = { subscreen = null })
                 is Dest.Planned -> PlannedToolScreen(current.tool, onBack = { subscreen = null })
                     is Dest.PlannedModule -> PlannedBasicToolDetailScreen(current.tool, onBack = { subscreen = null })

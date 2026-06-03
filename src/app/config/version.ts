@@ -15,6 +15,16 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: "v0.18.0",
+    name: "Sandbox camera test app",
+    date: "2026-06-03",
+    notes: [
+      "Added a RootDeck internal Sandbox Camera tool with real front/back camera preview.",
+      "Added controlled test-feed mode that loops the saved Video Test Feed source inside the sandbox.",
+      "Added camera permission and workflow checks for the v0.18.0 build.",
+    ],
+  },
+  {
     version: "v0.17.0",
     name: "Internal video test camera preview",
     date: "2026-06-03",
