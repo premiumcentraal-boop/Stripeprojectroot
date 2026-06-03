@@ -1,0 +1,220 @@
+1m 22s
+Run set -euxo pipefail
+  set -euxo pipefail
+  mkdir -p /tmp/libxposed
+  
+  clone_and_publish() {
+    local name="$1"
+    local url="$2"
+    local dir="/tmp/libxposed/$name"
+    git clone --depth 1 --branch 100 "$url" "$dir"
+    chmod +x "$dir/gradlew"
+    (cd "$dir" && ./gradlew publishToMavenLocal --no-daemon --stacktrace)
+  }
+  
+  clone_and_publish api https://github.com/libxposed/api.git
+  clone_and_publish service https://github.com/libxposed/service.git
+  shell: /usr/bin/bash -e {0}
+  env:
+    JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+    JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+    ANDROID_HOME: /usr/local/lib/android/sdk
+    ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    GRADLE_ACTION_ID: gradle/actions/setup-gradle
+    GRADLE_USER_HOME: /home/runner/.gradle
+    GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+    DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+    DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+    GITHUB_DEPENDENCY_GRAPH_ENABLED: false
++ mkdir -p /tmp/libxposed
++ clone_and_publish api https://github.com/libxposed/api.git
++ local name=api
++ local url=https://github.com/libxposed/api.git
++ local dir=/tmp/libxposed/api
++ git clone --depth 1 --branch 100 https://github.com/libxposed/api.git /tmp/libxposed/api
+Cloning into '/tmp/libxposed/api'...
+warning: refs/tags/100 ba6aec5649c7a8cd97b3ec5be14b2003c83d6636 is not a commit!
+Note: switching to '9ae4d6ac36ef803e5fde096e543657a6ebc2d60e'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
++ chmod +x /tmp/libxposed/api/gradlew
++ cd /tmp/libxposed/api
++ ./gradlew publishToMavenLocal --no-daemon --stacktrace
+Downloading https://services.gradle.org/distributions/gradle-8.0.1-bin.zip
+...........10%............20%............30%............40%............50%............60%...........70%............80%............90%............100%
+
+Welcome to Gradle 8.0.1!
+
+Here are the highlights of this release:
+ - Improvements to the Kotlin DSL
+ - Fine-grained parallelism from the first build with configuration cache
+ - Configurable Gradle user home cache cleanup
+
+For more details see https://docs.gradle.org/8.0.1/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. See https://docs.gradle.org/8.0.1/userguide/gradle_daemon.html#sec:disabling_the_daemon.
+Daemon will be stopped at the end of the build 
+This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+Checking the license for package Android SDK Build-Tools 33.0.2 in /usr/local/lib/android/sdk/licenses
+License for package Android SDK Build-Tools 33.0.2 accepted.
+Preparing "Install Android SDK Build-Tools 33.0.2 (revision: 33.0.2)".
+"Install Android SDK Build-Tools 33.0.2 (revision: 33.0.2)" ready.
+Installing Android SDK Build-Tools 33.0.2 in /usr/local/lib/android/sdk/build-tools/33.0.2
+"Install Android SDK Build-Tools 33.0.2 (revision: 33.0.2)" complete.
+"Install Android SDK Build-Tools 33.0.2 (revision: 33.0.2)" finished.
+Checking the license for package Android SDK Platform 33 in /usr/local/lib/android/sdk/licenses
+License for package Android SDK Platform 33 accepted.
+Preparing "Install Android SDK Platform 33 (revision: 3)".
+"Install Android SDK Platform 33 (revision: 3)" ready.
+Installing Android SDK Platform 33 in /usr/local/lib/android/sdk/platforms/android-33
+"Install Android SDK Platform 33 (revision: 3)" complete.
+"Install Android SDK Platform 33 (revision: 3)" finished.
+> Task :api:preBuild UP-TO-DATE
+> Task :api:preReleaseBuild UP-TO-DATE
+> Task :api:compileReleaseAidl NO-SOURCE
+> Task :api:mergeReleaseJniLibFolders
+> Task :api:mergeReleaseNativeLibs NO-SOURCE
+> Task :api:stripReleaseDebugSymbols NO-SOURCE
+> Task :api:copyReleaseJniLibsProjectAndLocalJars
+> Task :api:extractReleaseAnnotations
+> Task :api:generateReleaseEmptyResourceFiles
+> Task :api:javaPreCompileRelease
+> Task :api:mergeReleaseShaders
+> Task :api:compileReleaseJavaWithJavac
+> Task :api:mergeReleaseGeneratedProguardFiles
+> Task :api:mergeReleaseConsumerProguardFiles
+> Task :api:compileReleaseShaders NO-SOURCE
+> Task :api:generateReleaseAssets UP-TO-DATE
+> Task :api:packageReleaseAssets
+> Task :api:prepareReleaseArtProfile
+> Task :api:prepareLintJarForPublish
+> Task :api:processReleaseJavaRes NO-SOURCE
+> Task :api:writeReleaseAarMetadata
+> Task :api:mergeReleaseJavaResource
+> Task :api:processReleaseManifest
+> Task :api:syncReleaseLibJars
+> Task :api:bundleReleaseAar
+> Task :api:sourceReleaseJar
+> Task :api:generatePomFileForApiPublication
+
+> Task :api:javaDocReleaseGeneration
+Initializing plugins
+Dokka is performing: documentation for :api
+Validity check
+Creating documentation models
+WARN: The registry key 'java.correct.class.type.by.place.resolve.scope' accessed, but not loaded yet
+
+WARN: The registry key 'java.correct.class.type.by.place.resolve.scope' accessed, but not loaded yet
+
+> Task :api:javaDocReleaseGeneration
+Transforming documentation model before merging
+Merging documentation models
+Transforming documentation model after merging
+Creating pages
+Transforming pages
+Rendering
+
+Initializing plugins
+Dokka is performing: documentation for :api
+Validity check
+Creating documentation models
+
+
+> Task :api:javaDocReleaseGeneration FAILED
+20 actionable tasks: 20 executed
+The message received from the daemon indicates that the daemon has disappeared.
+Build request sent: Build{id=90473992-4e8f-430b-b200-f634be60a41c, currentDir=/tmp/libxposed/api}
+Attempting to read last messages from the daemon log...
+Daemon pid: 2930
+  log file: /home/runner/.gradle/daemon/8.0.1/daemon-2930.out.log
+----- Last  20 lines from daemon log file - daemon-2930.out.log -----
+2026-06-03T00:16:36.607+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] resetting idle timer
+2026-06-03T00:16:36.607+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Marking daemon stopped due to command completed and stop requested. The daemon is running a build: false
+2026-06-03T00:16:36.607+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] daemon has stopped.
+2026-06-03T00:16:36.920+0000 [WARN] [org.gradle.launcher.daemon.server.DefaultIncomingConnectionHandler] Unable to execute command Build{id=90473992-4e8f-430b-b200-f634be60a41c, currentDir=/tmp/libxposed/api} from socket connection from /127.0.0.1:46619 to /127.0.0.1:52294. Dispatching the failure to the daemon client
+java.lang.OutOfMemoryError: Metaspace
+2026-06-03T00:16:36.920+0000 [DEBUG] [org.gradle.launcher.daemon.server.Daemon] stop() called on daemon
+2026-06-03T00:16:36.921+0000 [INFO] [org.gradle.launcher.daemon.server.Daemon] Stop requested. Daemon is removing its presence from the registry...
+2026-06-03T00:16:36.921+0000 [DEBUG] [org.gradle.launcher.daemon.server.SynchronizedDispatchConnection] thread 19: dispatching Failure[value=java.lang.OutOfMemoryError: Metaspace]
+2026-06-03T00:16:36.921+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonRegistryUpdater] Removing our presence to clients, eg. removing this address from the registry: [5348fea2-1b21-4304-9df5-4659c7c5397d port:46619, addresses:[localhost/127.0.0.1]]
+2026-06-03T00:16:36.921+0000 [DEBUG] [org.gradle.launcher.daemon.registry.PersistentDaemonRegistry] Removing daemon address: [5348fea2-1b21-4304-9df5-4659c7c5397d port:46619, addresses:[localhost/127.0.0.1]]
+2026-06-03T00:16:36.922+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Waiting to acquire exclusive lock on daemon addresses registry.
+2026-06-03T00:16:36.922+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Lock acquired on daemon addresses registry.
+2026-06-03T00:16:36.923+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Releasing lock on daemon addresses registry.
+2026-06-03T00:16:36.923+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonRegistryUpdater] Address removed from registry.
+2026-06-03T00:16:37.235+0000 [DEBUG] [org.gradle.launcher.daemon.server.DefaultIncomingConnectionHandler] Finishing executing command: Build{id=90473992-4e8f-430b-b200-f634be60a41c, currentDir=/tmp/libxposed/api}
+2026-06-03T00:16:37.236+0000 [DEBUG] [org.gradle.launcher.daemon.server.SynchronizedDispatchConnection] thread 19: stopping connection
+2026-06-03T00:16:37.237+0000 [DEBUG] [org.gradle.internal.remote.internal.inet.SocketConnection] Discarding EOFException: java.io.EOFException
+2026-06-03T00:16:37.237+0000 [DEBUG] [org.gradle.launcher.daemon.server.SynchronizedDispatchConnection] thread 20: received null
+2026-06-03T00:16:37.237+0000 [DEBUG] [org.gradle.launcher.daemon.server.DefaultDaemonConnection] thread 20: Received end-of-input from client.
+2026-06-03T00:16:37.237+0000 [DEBUG] [org.gradle.launcher.daemon.server.SynchronizedDispatchConnection] thread 19: stopping connection
+----- End of the daemon log -----
+
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+
+* Try:
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+
+* Exception is:
+org.gradle.launcher.daemon.client.DaemonDisappearedException: Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+	at org.gradle.launcher.daemon.client.DaemonClient.handleDaemonDisappearance(DaemonClient.java:269)
+	at org.gradle.launcher.daemon.client.DaemonClient.monitorBuild(DaemonClient.java:242)
+	at org.gradle.launcher.daemon.client.DaemonClient.executeBuild(DaemonClient.java:204)
+	at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:54)
+	at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:37)
+	at org.gradle.launcher.cli.RunBuildAction.run(RunBuildAction.java:57)
+	at org.gradle.internal.Actions$RunnableActionAdapter.execute(Actions.java:167)
+	at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:259)
+	at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:230)
+	at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:82)
+	at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:30)
+	at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:96)
+	at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:40)
+	at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:44)
+	at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:26)
+	at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:41)
+	at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:26)
+	at org.gradle.launcher.cli.DefaultCommandLineActionFactory$WithLogging.execute(DefaultCommandLineActionFactory.java:361)
+	at org.gradle.launcher.Main.doAction(Main.java:35)
+	at org.gradle.launcher.bootstrap.EntryPoint.run(EntryPoint.java:50)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.gradle.launcher.bootstrap.ProcessBootstrap.runNoExit(ProcessBootstrap.java:60)
+	at org.gradle.launcher.bootstrap.ProcessBootstrap.run(ProcessBootstrap.java:37)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.gradle.launcher.GradleMain.main(GradleMain.java:34)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.gradle.wrapper.BootstrapMainStarter.start(BootstrapMainStarter.java:35)
+	at org.gradle.wrapper.WrapperExecutor.execute(WrapperExecutor.java:110)
+	at org.gradle.wrapper.GradleWrapperMain.main(GradleWrapperMain.java:66)
+
+
+* Get more help at https://help.gradle.org
+Error: Process completed with exit code 1.

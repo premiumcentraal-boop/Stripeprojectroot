@@ -95,14 +95,22 @@ jobs:
           clone_and_publish() {
             local name="$1"
             local url="$2"
+            local task="$3"
             local dir="/tmp/libxposed/$name"
             git clone --depth 1 --branch 100 "$url" "$dir"
             chmod +x "$dir/gradlew"
-            (cd "$dir" && ./gradlew publishToMavenLocal --no-daemon --stacktrace)
+
+            # CI only needs the AAR/POM artifacts in Maven local for LSPosed to resolve.
+            # The libxposed tag 100 build enables withJavadocJar(), which runs Dokka and
+            # has been crashing GitHub-hosted runners with Metaspace OOM. Remove only the
+            # docs artifact from this temporary checkout; sources and AAR remain published.
+            find "$dir" -name 'build.gradle.kts' -print -exec sed -i '/withJavadocJar()/d' {} \;
+
+            (cd "$dir" && ./gradlew "$task" --no-daemon --stacktrace -Dorg.gradle.jvmargs="-Xmx3g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8")
           }
 
-          clone_and_publish api https://github.com/libxposed/api.git
-          clone_and_publish service https://github.com/libxposed/service.git
+          clone_and_publish api https://github.com/libxposed/api.git :api:publishApiPublicationToMavenLocal
+          clone_and_publish service https://github.com/libxposed/service.git :interface:publishInterfacePublicationToMavenLocal
 
       - name: Inspect LSPosed Gradle project
         working-directory: LSPosed-master
