@@ -1,5 +1,13 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { GITHUB_APK_URL, LSPOSED_ACTIONS_URL, LSPOSED_APK_URL, LSPOSED_RELEASE_API_URL } from "./config/download";
+import {
+  GITHUB_APK_URL,
+  LSPOSED_ACTIONS_URL,
+  LSPOSED_APK_URL,
+  LSPOSED_RELEASE_API_URL,
+  PROJECT_STRIPE_APK_FILE_NAME,
+  PROJECT_STRIPE_APK_URL,
+  PROJECT_STRIPE_RELEASE_API_URL,
+} from "./config/download";
 import { CURRENT_APP_VERSION } from "./config/version";
 import {
   Activity,
@@ -66,11 +74,10 @@ function Pill({ children, tone = "blue" }: { children: ReactNode; tone?: "blue" 
   return <span className={`rounded-full border px-3 py-1 text-xs font-medium ${tones[tone]}`}>{children}</span>;
 }
 
-
-type LsposedReleaseState = "checking" | "ready" | "missing";
+type ReleaseState = "checking" | "ready" | "missing";
 
 function LsposedDownloadCard() {
-  const [state, setState] = useState<LsposedReleaseState>("checking");
+  const [state, setState] = useState<ReleaseState>("checking");
 
   useEffect(() => {
     let cancelled = false;
@@ -96,6 +103,7 @@ function LsposedDownloadCard() {
     return (
       <a
         href={LSPOSED_APK_URL}
+        download="lsposed-debug.apk"
         className="group rounded-[1.75rem] border border-blue-400/25 bg-blue-500/10 p-5 transition hover:border-blue-300/60 hover:bg-blue-500/15"
       >
         <div className="flex items-start justify-between gap-4">
@@ -130,6 +138,68 @@ function LsposedDownloadCard() {
       </div>
       <div className="mt-4 font-mono text-xs text-amber-200/80">Open Build LSPosed APK workflow</div>
     </a>
+  );
+}
+
+function ProjectStripeDownloadCard() {
+  const [state, setState] = useState<ReleaseState>("checking");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(PROJECT_STRIPE_RELEASE_API_URL, { headers: { Accept: "application/vnd.github+json" } })
+      .then((response) => {
+        if (!response.ok) return null;
+        return response.json() as Promise<{ assets?: Array<{ name?: string }> }>;
+      })
+      .then((release) => {
+        if (cancelled) return;
+        const hasAsset = release?.assets?.some((asset) => asset.name === PROJECT_STRIPE_APK_FILE_NAME) ?? false;
+        setState(hasAsset ? "ready" : "missing");
+      })
+      .catch(() => {
+        if (!cancelled) setState("missing");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (state === "ready") {
+    return (
+      <a
+        href={PROJECT_STRIPE_APK_URL}
+        download={PROJECT_STRIPE_APK_FILE_NAME}
+        className="group rounded-[1.75rem] border border-cyan-400/25 bg-cyan-500/10 p-5 transition hover:border-cyan-300/60 hover:bg-cyan-500/15"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-sm font-semibold text-cyan-100">Project Stripe APK download</div>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              Latest Project Stripe manager APK from the project-stripe-latest release.
+            </p>
+          </div>
+          <Download className="size-5 shrink-0 text-cyan-300 transition group-hover:translate-y-0.5" />
+        </div>
+        <div className="mt-4 font-mono text-xs text-cyan-200/80">{PROJECT_STRIPE_APK_FILE_NAME}</div>
+      </a>
+    );
+  }
+
+  return (
+    <div className="rounded-[1.75rem] border border-slate-500/25 bg-slate-500/10 p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="text-sm font-semibold text-slate-200">Project Stripe APK not published yet</div>
+          <p className="mt-2 text-sm leading-6 text-slate-400">
+            {state === "checking"
+              ? "Checking the project-stripe-latest release for the APK asset."
+              : "The direct APK asset is not ready yet. Re-run the Project Stripe build workflow, then refresh this page."}
+          </p>
+        </div>
+        <Download className="size-5 shrink-0 text-slate-400" />
+      </div>
+      <div className="mt-4 font-mono text-xs text-slate-400">Waiting for {PROJECT_STRIPE_APK_FILE_NAME}</div>
+    </div>
   );
 }
 
@@ -268,6 +338,7 @@ export default function App() {
             <div className="mt-8 grid gap-4 md:grid-cols-2">
               <a
                 href={GITHUB_APK_URL}
+                download="rootdeck-debug.apk"
                 className="group rounded-[1.75rem] border border-emerald-400/25 bg-emerald-400/10 p-5 transition hover:border-emerald-300/60 hover:bg-emerald-400/15"
               >
                 <div className="flex items-start justify-between gap-4">
@@ -283,6 +354,7 @@ export default function App() {
               </a>
 
               <LsposedDownloadCard />
+              <ProjectStripeDownloadCard />
             </div>
           </div>
           <PhoneShell />
