@@ -32,7 +32,7 @@ fun DashboardScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("RootDeck", style = MaterialTheme.typography.headlineSmall)
-        AssistChip(onClick = {}, label = { Text("App version v0.28.0 · build 28") })
+        AssistChip(onClick = {}, label = { Text("App version v0.30.0 · build 30") })
         SafetyPolicyLink()
 
         StatusCard(
@@ -45,7 +45,7 @@ fun DashboardScreen(
         StatusCard("Root status", repo.rootStatus.value.message)
         StatusCard("Root provider", repo.rootStatus.value.providerName
             ?: repo.detectProvider() ?: "Not detected")
-        StatusCard("App version", "RootDeck v0.28.0 · Android versionCode 28")
+        StatusCard("App version", "RootDeck v0.30.0 · Android versionCode 30")
         StatusCard("Android", "Android ${Build.VERSION.RELEASE} · API ${Build.VERSION.SDK_INT}")
         StatusCard("Device", "${Build.MANUFACTURER} ${Build.MODEL}")
         StatusCard("Storage", storageLabel())

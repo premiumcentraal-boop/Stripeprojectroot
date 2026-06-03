@@ -71,7 +71,7 @@ class VideoInjectionXposedModule : IXposedHookLoadPackage {
             val cameraDeviceClass = XposedHelpers.findClass("android.hardware.camera2.CameraDevice", lpparam.classLoader)
             XposedBridge.hookAllMethods(cameraDeviceClass, "createCaptureSession", object : XC_MethodHook() {
                 override fun beforeHookedMethod(param: MethodHookParam) {
-                    XposedBridge.log("RootDeck sandbox Camera2 capture session observed. External camera replacement is disabled; internal sandbox test-feed mode loops the selected video.")
+                    XposedBridge.log("RootDeck sandbox Camera2 capture session observed. Internal Sandbox Camera test-feed mode is connected and loops the selected video when videoInjectionEnabled=true.")
                 }
             })
         } catch (e: Throwable) {
@@ -94,8 +94,11 @@ class VideoInjectionXposedModule : IXposedHookLoadPackage {
             val output = xmlPref(xml, "output_size") ?: "MatchCamera"
             val repeat = xmlBool(xml, "repeat_playback", true)
             val requested = xmlBool(xml, "test_run_requested", false)
+            val injectionEnabled = xmlBool(xml, "video_injection_enabled", false)
+            val realCameraConnected = xmlBool(xml, "real_camera_injection_connected", false)
+            val sandboxMode = xmlPref(xml, "sandbox_mode") ?: "RealCamera"
             XposedBridge.log(
-                "RootDeck internal Video Test Feed config: video=$video, camera=$camera, fit=$fit, crop=$crop, output=$output, repeat=$repeat, testRunRequested=$requested"
+                "RootDeck internal Video Test Feed config: video=$video, camera=$camera, fit=$fit, crop=$crop, output=$output, repeat=$repeat, testRunRequested=$requested, videoInjectionEnabled=$injectionEnabled, realCameraInjectionConnected=$realCameraConnected, sandboxMode=$sandboxMode"
             )
         }.onFailure { error ->
             XposedBridge.log("RootDeck could not read internal Video Test Feed config yet: ${error.message}")

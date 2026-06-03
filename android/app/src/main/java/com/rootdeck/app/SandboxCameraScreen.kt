@@ -16,6 +16,8 @@ import android.widget.VideoView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Videocam
@@ -23,6 +25,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -33,8 +36,15 @@ private const val SANDBOX_VIDEO_FEED_PREFS = "rootdeck_video_feed_setup"
 @Composable
 fun SandboxCameraScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    var selectedMode by remember { mutableStateOf(SandboxMode.RealCamera) }
-    var lensFacing by remember { mutableStateOf(CameraCharacteristics.LENS_FACING_FRONT) }
+    val prefs = remember { context.getSharedPreferences(SANDBOX_VIDEO_FEED_PREFS, Context.MODE_PRIVATE) }
+    val initialMode = remember {
+        if (prefs.getBoolean("video_injection_enabled", false) || prefs.getBoolean("test_run_requested", false) || prefs.getString("sandbox_mode", null) == "TestFeed") SandboxMode.TestFeed else SandboxMode.RealCamera
+    }
+    val initialLens = remember {
+        if ((prefs.getString("target_camera", "Front Camera") ?: "Front Camera").contains("Back", ignoreCase = true)) CameraCharacteristics.LENS_FACING_BACK else CameraCharacteristics.LENS_FACING_FRONT
+    }
+    var selectedMode by remember { mutableStateOf(initialMode) }
+    var lensFacing by remember { mutableStateOf(initialLens) }
     var hasCameraPermission by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
     }
@@ -45,7 +55,6 @@ fun SandboxCameraScreen(onBack: () -> Unit) {
     DisposableEffect(lensFacing, selectedMode) {
         onDispose { cameraController.close() }
     }
-    val prefs = remember { context.getSharedPreferences(SANDBOX_VIDEO_FEED_PREFS, Context.MODE_PRIVATE) }
     val savedVideoUri = remember { prefs.getString("video_uri", null)?.let(Uri::parse) }
     val repeatPlayback = prefs.getBoolean("repeat_playback", true)
     val targetCamera = prefs.getString("target_camera", "Front Camera") ?: "Front Camera"
@@ -56,7 +65,7 @@ fun SandboxCameraScreen(onBack: () -> Unit) {
         TextButton(onClick = onBack) { Text("← Back to Basic Tools") }
         Text("Sandbox Camera App", style = MaterialTheme.typography.headlineSmall)
         Text(
-            "Internal RootDeck-only camera sandbox. Normal mode uses the real device camera. Test-feed mode plays the saved Video Test Feed video on repeat. When RootDeck is enabled in LSPosed for RootDeck only, the module logs Camera1/Camera2 events and the saved test-feed config for this sandbox.",
+            "Internal RootDeck-only camera sandbox. Normal mode uses the real device camera. Test-feed mode is now directly connected to Video Test Feed and plays the selected video on repeat through the in-app camera test surface. Enable RootDeck in Vector / LSPosed for RootDeck only.",
             style = MaterialTheme.typography.bodySmall,
         )
         SafetyPolicyLink()
@@ -143,7 +152,13 @@ fun SandboxCameraScreen(onBack: () -> Unit) {
                 StatusLine("Fit mode", fitMode)
                 StatusLine("Output size", outputSize)
                 StatusLine("Repeat playback", if (repeatPlayback) "Always on" else "Off")
-                StatusLine("LSPosed scope", "Enable RootDeck package only")
+                val realConnected = hasCameraPermission
+                val sandboxConnected = prefs.getBoolean("video_injection_enabled", false)
+                StatusLine("Vector / LSPosed scope", "Enable RootDeck package only")
+                StatusLine("Real camera injection", if (realConnected) "Connected to in-app phone camera" else "Waiting for camera permission")
+                SandboxConnectionDot("Real camera", realConnected)
+                StatusLine("Sandbox video injection", if (sandboxConnected) "Connected to Test video feed" else "Not connected yet")
+                SandboxConnectionDot("Sandbox test feed", sandboxConnected)
                 StatusLine("Scope", "RootDeck internal sandbox only")
             }
         }
@@ -151,6 +166,20 @@ fun SandboxCameraScreen(onBack: () -> Unit) {
 }
 
 enum class SandboxMode { RealCamera, TestFeed }
+
+@Composable
+private fun SandboxConnectionDot(label: String, connected: Boolean) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(if (connected) Color(0xFF22C55E) else MaterialTheme.colorScheme.outline, CircleShape),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
+        Text(if (connected) "Connected" else "Waiting", style = MaterialTheme.typography.bodySmall)
+    }
+}
 
 @Composable
 private fun StatusLine(label: String, value: String) {

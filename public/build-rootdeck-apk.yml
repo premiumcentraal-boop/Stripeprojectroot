@@ -51,8 +51,8 @@ jobs:
           test -f android/settings.gradle.kts
           test -f android/build.gradle.kts
           test -f android/app/build.gradle.kts
-          grep 'versionName = "0.28.0"' android/app/build.gradle.kts
-          grep 'versionCode = 28' android/app/build.gradle.kts
+          grep 'versionName = "0.30.0"' android/app/build.gradle.kts
+          grep 'versionCode = 30' android/app/build.gradle.kts
 
       - name: Explain Gradle wrapper workaround
         run: |
@@ -75,8 +75,8 @@ jobs:
           AAPT="$ANDROID_HOME/build-tools/34.0.0/aapt"
           test -f "$APK"
           "$AAPT" dump badging "$APK" | tee apk-badging.txt
-          grep "versionName='0.28.0'" apk-badging.txt
-          grep "versionCode='28'" apk-badging.txt
+          grep "versionName='0.30.0'" apk-badging.txt
+          grep "versionCode='30'" apk-badging.txt
 
       - name: Prepare release APK
         run: |
@@ -86,7 +86,7 @@ jobs:
       - name: Upload Actions artifact
         uses: actions/upload-artifact@v5
         with:
-          name: rootdeck-debug-apk-v0.28.0
+          name: rootdeck-debug-apk-v0.30.0
           path: rootdeck-debug.apk
           if-no-files-found: error
 
@@ -98,8 +98,8 @@ jobs:
           body: |
             Automated RootDeck APK build from GitHub Actions.
 
-            Current expected app version: v0.28.0
-            Android versionName: 0.28.0
+            Current expected app version: v0.30.0
+            Android versionName: 0.30.0
             Android versionCode: 28
 
             Stable download URL:

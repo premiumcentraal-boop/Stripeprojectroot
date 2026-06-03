@@ -15,6 +15,26 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: "v0.30.0",
+    name: "In-app real camera injection status",
+    date: "2026-06-03",
+    notes: [
+      "Connected the Real camera preview inside RootDeck to the video injection status flow separately from the Sandbox test feed.",
+      "Added green connection dots for Real camera and Sandbox test feed readiness.",
+      "Changed the Real camera preview to stay inside RootDeck and use the phone camera directly instead of opening the external Android camera app.",
+    ],
+  },
+  {
+    version: "v0.29.0",
+    name: "Connected internal video injection",
+    date: "2026-06-03",
+    notes: [
+      "Connected Video Test Feed directly to the internal Sandbox Camera test app.",
+      "Prepare First Test Run now saves the injection state, enables Test video feed mode, and opens the in-app camera validation surface.",
+      "Sandbox Camera now starts in the saved target camera/test-feed mode and shows whether internal injection is connected.",
+    ],
+  },
+  {
     version: "v0.28.0",
     name: "Video Test Feed Vector readiness",
     date: "2026-06-03",

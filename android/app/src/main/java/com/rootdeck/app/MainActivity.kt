@@ -166,7 +166,7 @@ private fun RootDeckApp(
                 Dest.ScheduledReboot -> ScheduledRebootScreen(repo, onBack = { subscreen = null })
                 Dest.ProcessPrivacy -> ProcessPrivacyScreen(repo, privacy, onBack = { subscreen = null })
                 Dest.Doppelganger -> DoppelgangerScreen(repo, doppel, onBack = { subscreen = null })
-                Dest.VideoTestFeed -> VideoTestFeedScreen(onBack = { subscreen = null }, onOpenVectorSetup = { subscreen = Dest.LsposedInstaller })
+                Dest.VideoTestFeed -> VideoTestFeedScreen(onBack = { subscreen = null }, onOpenVectorSetup = { subscreen = Dest.LsposedInstaller }, onOpenSandboxCamera = { subscreen = Dest.SandboxCamera })
                 Dest.SandboxCamera -> SandboxCameraScreen(onBack = { subscreen = null })
                 Dest.LsposedInstaller -> VectorSetupGuideScreen(onBack = { subscreen = null })
                 is Dest.Planned -> PlannedToolScreen(current.tool, onBack = { subscreen = null })

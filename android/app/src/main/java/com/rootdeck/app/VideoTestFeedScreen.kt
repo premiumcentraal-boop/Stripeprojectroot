@@ -6,11 +6,11 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.hardware.camera2.CameraCharacteristics
-import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -26,18 +26,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import android.view.TextureView
 import android.widget.VideoView
 
 private const val VIDEO_MODULE_CLASS = "com.rootdeck.app.xposed.VideoInjectionXposedModule"
 private const val VIDEO_FEED_PREFS = "rootdeck_video_feed_setup"
 
 @Composable
-fun VideoTestFeedScreen(onBack: () -> Unit, onOpenVectorSetup: () -> Unit = {}) {
+fun VideoTestFeedScreen(onBack: () -> Unit, onOpenVectorSetup: () -> Unit = {}, onOpenSandboxCamera: () -> Unit = {}) {
     val context = LocalContext.current
     var selectedVideoUri by remember { mutableStateOf<Uri?>(null) }
     var selectedVideoLabel by remember { mutableStateOf<String?>(null) }
@@ -54,6 +56,10 @@ fun VideoTestFeedScreen(onBack: () -> Unit, onOpenVectorSetup: () -> Unit = {}) 
     }
     val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         hasCameraPermission = granted
+    }
+    val realCameraController = remember { SandboxCameraController() }
+    DisposableEffect(previewLensFacing, previewMode) {
+        onDispose { realCameraController.close() }
     }
     val repeatPlayback = true
     var lsposedStatus by remember { mutableStateOf(readLsposedStatus(context)) }
@@ -89,16 +95,6 @@ fun VideoTestFeedScreen(onBack: () -> Unit, onOpenVectorSetup: () -> Unit = {}) 
         setSelectedVideo(uri)
     }
 
-    fun openAndroidCameraApp() {
-        val intent = Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        runCatching { context.startActivity(intent) }
-            .onFailure {
-                runCatching { context.startActivity(Intent(MediaStore.ACTION_IMAGE_CAPTURE)) }
-            }
-    }
-
     fun saveVideoFeedSetup() {
         context.getSharedPreferences(VIDEO_FEED_PREFS, Context.MODE_PRIVATE)
             .edit()
@@ -108,6 +104,9 @@ fun VideoTestFeedScreen(onBack: () -> Unit, onOpenVectorSetup: () -> Unit = {}) 
             .putString("crop_anchor", cropAnchor.name)
             .putString("output_size", outputSize.name)
             .putBoolean("repeat_playback", repeatPlayback)
+            .putBoolean("video_injection_enabled", selectedVideoUri != null)
+            .putBoolean("real_camera_injection_connected", hasCameraPermission)
+            .putString("sandbox_mode", "TestFeed")
             .apply()
         setupSaved = true
     }
@@ -118,8 +117,11 @@ fun VideoTestFeedScreen(onBack: () -> Unit, onOpenVectorSetup: () -> Unit = {}) 
             .edit()
             .putLong("last_test_run_started_at", System.currentTimeMillis())
             .putBoolean("test_run_requested", true)
+            .putBoolean("video_injection_enabled", true)
+            .putString("sandbox_mode", "TestFeed")
             .apply()
-        testRunStatus = "Test run prepared. Now open your own Vector / LSPosed-scoped camera test app after confirming RootDeck is enabled in Vector / LSPosed. The video is saved with repeat playback always on."
+        testRunStatus = "Connected. Opening the internal Sandbox Camera in Test video feed mode. The selected video loops through the in-app camera test surface."
+        onOpenSandboxCamera()
     }
 
     LaunchedEffect(vectorRefreshKey) {
@@ -169,13 +171,18 @@ fun VideoTestFeedScreen(onBack: () -> Unit, onOpenVectorSetup: () -> Unit = {}) 
                     Spacer(Modifier.width(8.dp))
                     Text("Video injection status", style = MaterialTheme.typography.titleSmall)
                 }
-                val injectionReady = lsposedStatus.managerInstalled && lsposedStatus.moduleEntryPackaged && setupSaved && selectedVideoUri != null
+                val sandboxInjectionReady = lsposedStatus.managerInstalled && lsposedStatus.moduleEntryPackaged && setupSaved && selectedVideoUri != null
+                val realCameraInjectionReady = lsposedStatus.moduleEntryPackaged && hasCameraPermission
                 StatusRow("Vector / LSPosed API", if (lsposedStatus.managerInstalled) "Positive — Vector / LSPosed Manager detected" else "Not detected")
                 StatusRow("RootDeck module", if (lsposedStatus.moduleEntryPackaged) "Packaged" else "Not connected")
                 StatusRow("Video setup", if (setupSaved && selectedVideoUri != null) "Saved" else "Not saved yet")
-                StatusRow("Video injection", if (injectionReady) "Enabled for RootDeck internal sandbox" else "Not properly connected yet")
+                StatusRow("Real camera connection", if (realCameraInjectionReady) "● Connected to in-app phone camera" else "Not connected yet")
+                StatusRow("Sandbox video link", if (selectedVideoUri != null) "Video source linked to Sandbox Camera" else "No video source linked")
+                StatusRow("Video injection", if (sandboxInjectionReady) "Connected for RootDeck internal Sandbox Camera" else "Not properly connected yet")
+                ConnectionDotRow("Real camera", realCameraInjectionReady)
+                ConnectionDotRow("Sandbox test feed", sandboxInjectionReady)
                 Text(
-                    if (injectionReady) "RootDeck has the Vector / LSPosed module entry and a saved video source. Use Test video feed for the internal looping preview, or open Android Camera for the real device camera."
+                    if (sandboxInjectionReady) "RootDeck has the Vector / LSPosed module entry and a saved video source. Prepare First Test Run now opens Sandbox Camera in Test video feed mode so the in-app camera test surface uses the selected looping video."
                     else "Complete Vector / LSPosed setup, select a video, and save the setup before testing injection status.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -372,26 +379,26 @@ fun VideoTestFeedScreen(onBack: () -> Unit, onOpenVectorSetup: () -> Unit = {}) 
                             )
                         }
                         if (previewMode == SandboxMode.RealCamera) {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().aspectRatio(9f / 16f).background(MaterialTheme.colorScheme.surfaceVariant),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Text("Use the Android camera app", style = MaterialTheme.typography.bodyMedium)
-                                    Text(
-                                        "This opens your phone's normal camera app for the real camera check.",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    if (!hasCameraPermission) {
+                            if (!hasCameraPermission) {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().aspectRatio(9f / 16f).background(MaterialTheme.colorScheme.surfaceVariant),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Text("In-app real camera preview", style = MaterialTheme.typography.bodyMedium)
+                                        Text("RootDeck stays open and uses the phone camera directly inside this screen.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         OutlinedButton(onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }) {
                                             Text("Allow Camera Permission")
                                         }
                                     }
-                                    Button(onClick = { openAndroidCameraApp() }) {
-                                        Text("Open Android Camera")
-                                    }
                                 }
+                            } else {
+                                AndroidView(
+                                    modifier = Modifier.fillMaxWidth().aspectRatio(9f / 16f),
+                                    factory = { viewContext -> TextureView(viewContext).also { texture -> startSandboxCamera(viewContext, texture, previewLensFacing, realCameraController) } },
+                                    update = { texture -> startSandboxCamera(texture.context, texture, previewLensFacing, realCameraController) },
+                                )
+                                Text("Real camera stays inside RootDeck. The green status dot confirms the in-app camera path is connected separately from the sandbox video feed.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         } else {
                             if (selectedVideoUri != null) {
@@ -462,22 +469,22 @@ fun VideoTestFeedScreen(onBack: () -> Unit, onOpenVectorSetup: () -> Unit = {}) 
                     Text("4. Start First Test Run", style = MaterialTheme.typography.titleSmall)
                 }
                 Text(
-                    "This prepares the saved repeat-video setup for an app you own or control. Enable RootDeck in Vector / LSPosed and scope it only to that test app before opening the app's camera screen.",
+                    "This connects the saved repeat-video setup to RootDeck's internal Sandbox Camera app. Enable RootDeck in Vector / LSPosed for RootDeck, then open the in-app Sandbox Camera test surface.",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 StatusRow("Video setup", if (selectedVideoUri != null && setupSaved) "Saved" else "Select video and save setup first")
                 StatusRow("Repeat playback", "Always on")
-                StatusRow("Vector / LSPosed scope", "Enable RootDeck only for your own test app")
+                StatusRow("Vector / LSPosed scope", "Enable RootDeck for RootDeck internal sandbox")
                 StatusRow("Test run", testRunStatus)
                 Button(
                     enabled = selectedVideoUri != null,
                     onClick = { startFirstTestRun() },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Prepare First Test Run")
+                    Text("Connect & Open Sandbox Camera")
                 }
                 Text(
-                    "If a normal Camera app still shows the real lens, that means it is not an approved scoped test target or the replacement pipeline is not active for that app. Use a controlled test app for the first run.",
+                    "The first supported test target is RootDeck's internal Sandbox Camera. Third-party camera apps are not used for this internal validation path.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -605,6 +612,20 @@ private fun VideoPickerButtons(onPickGallery: () -> Unit, onPickFiles: () -> Uni
             Spacer(Modifier.width(6.dp))
             Text("Files")
         }
+    }
+}
+
+@Composable
+private fun ConnectionDotRow(label: String, connected: Boolean) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(if (connected) Color(0xFF22C55E) else MaterialTheme.colorScheme.outline, CircleShape),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
+        Text(if (connected) "Connected" else "Waiting", style = MaterialTheme.typography.bodySmall)
     }
 }
 

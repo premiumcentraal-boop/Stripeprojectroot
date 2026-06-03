@@ -16,6 +16,6 @@ export const LSPOSED_ACTIONS_URL =
 export const APK_DOWNLOAD_URL = GITHUB_APK_URL;
 export const APK_FILE_NAME = "rootdeck-debug.apk";
 export const LSPOSED_APK_FILE_NAME = "lsposed-debug.apk";
-export const APK_VERSION_LABEL = "Latest GitHub Release";
+export const APK_VERSION_LABEL = "RootDeck v0.30.0 GitHub Release";
 export const APK_TARGET_LABEL = "Android 14+";
 export const APK_ROOT_LABEL = "Already rooted device required";
