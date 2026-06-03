@@ -104,7 +104,15 @@ private fun RootDeckApp(
     ) { padding ->
         Surface(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (!setupFinishedForSession && repo.rootMode.value != RootMode.ROOTDECK_ONLY) {
-                StartupSetupScreen(repo = repo, onFinish = { setupFinishedForSession = true })
+                StartupSetupScreen(
+                    repo = repo,
+                    onFinish = { setupFinishedForSession = true },
+                    onOpenVideoTestFeed = {
+                        setupFinishedForSession = true
+                        tab = Dest.Tools
+                        subscreen = Dest.VideoTestFeed
+                    },
+                )
             } else {
                 val current = subscreen ?: tab
                 when (current) {

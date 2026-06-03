@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.PhotoLibrary
@@ -25,6 +26,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 
 private const val VIDEO_MODULE_CLASS = "com.rootdeck.app.xposed.VideoInjectionXposedModule"
+private const val VIDEO_FEED_PREFS = "rootdeck_video_feed_setup"
 
 @Composable
 fun VideoTestFeedScreen(onBack: () -> Unit) {
@@ -32,6 +34,10 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
     var selectedVideoUri by remember { mutableStateOf<Uri?>(null) }
     var selectedVideoLabel by remember { mutableStateOf<String?>(null) }
     var targetCamera by remember { mutableStateOf("Front Camera") }
+    var fitMode by remember { mutableStateOf(VideoFitMode.FitBlackBars) }
+    var cropAnchor by remember { mutableStateOf(VideoCropAnchor.Center) }
+    var outputSize by remember { mutableStateOf(CameraOutputSize.MatchCamera) }
+    var setupSaved by remember { mutableStateOf(false) }
     var lsposedStatus by remember { mutableStateOf(readLsposedStatus(context)) }
 
     fun setSelectedVideo(uri: Uri?) {
@@ -61,6 +67,22 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
         setSelectedVideo(uri)
     }
 
+    fun saveVideoFeedSetup() {
+        context.getSharedPreferences(VIDEO_FEED_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString("video_uri", selectedVideoUri?.toString())
+            .putString("target_camera", targetCamera)
+            .putString("fit_mode", fitMode.name)
+            .putString("crop_anchor", cropAnchor.name)
+            .putString("output_size", outputSize.name)
+            .apply()
+        setupSaved = true
+    }
+
+    LaunchedEffect(selectedVideoUri, targetCamera, fitMode, cropAnchor, outputSize) {
+        setupSaved = false
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -72,10 +94,27 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
         
         Text("Video Test Feed", style = MaterialTheme.typography.headlineSmall)
         Text(
-            "Explicit media source setup for controlled, user-owned testing environments.",
+            "Friendly LSPosed-linked setup for streaming a selected video file into your own front/back camera test flow.",
             style = MaterialTheme.typography.bodySmall,
         )
         SafetyPolicyLink()
+
+        ElevatedCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Setup guide", style = MaterialTheme.typography.titleSmall)
+                Text("1. Install LSPosed with the guided installer and reboot.", style = MaterialTheme.typography.bodySmall)
+                Text("2. Enable the RootDeck module in LSPosed and scope it only to your own test apps.", style = MaterialTheme.typography.bodySmall)
+                Text("3. Pick a video file here, choose Front or Back camera, then run your test app.", style = MaterialTheme.typography.bodySmall)
+                StatusRow("LSPosed Manager", if (lsposedStatus.managerInstalled) "Detected" else "Open LSPosed after reboot")
+                StatusRow("RootDeck module entry", if (lsposedStatus.moduleEntryPackaged) "Packaged" else "Missing")
+                StatusRow("Video file", if (selectedVideoUri != null) "Selected" else "Choose Gallery or Files")
+                StatusRow("Camera target", targetCamera)
+                StatusRow("Fit mode", fitMode.label)
+                StatusRow("Crop / bars", fitMode.editingSummary(cropAnchor))
+                StatusRow("Output size", outputSize.label)
+                StatusRow("Editor setup", if (setupSaved) "Saved for LSPosed test flow" else "Review and save below")
+            }
+        }
 
         ElevatedCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
@@ -153,7 +192,7 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
 
         ElevatedCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
-                Text("2. Target Camera", style = MaterialTheme.typography.titleSmall)
+                Text("2. Choose Front or Back Camera", style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(
@@ -169,10 +208,97 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
                     Text("Back Camera")
                 }
                 Text(
-                    "Selected target: $targetCamera",
+                    "RootDeck will prepare the selected video for: $targetCamera",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+
+        ElevatedCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.AspectRatio, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(8.dp))
+                    Text("3. Fit Video to Camera Size", style = MaterialTheme.typography.titleSmall)
+                }
+                Text(
+                    "Choose how RootDeck should prepare videos that do not match the camera shape. This controls the LSPosed video feed preparation for your own scoped test apps.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text("Resize mode", style = MaterialTheme.typography.labelMedium)
+                VideoFitMode.values().forEach { mode ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = fitMode == mode, onClick = { fitMode = mode })
+                        Column {
+                            Text(mode.label, style = MaterialTheme.typography.bodyMedium)
+                            Text(mode.description, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                if (fitMode == VideoFitMode.FillCrop) {
+                    Text("Crop position", style = MaterialTheme.typography.labelMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        VideoCropAnchor.values().forEach { anchor ->
+                            FilterChip(
+                                selected = cropAnchor == anchor,
+                                onClick = { cropAnchor = anchor },
+                                label = { Text(anchor.label) },
+                            )
+                        }
+                    }
+                    Text(
+                        "Choose what stays visible when the video is larger than the camera frame after filling it.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Divider()
+                Text("Camera output size", style = MaterialTheme.typography.labelMedium)
+                CameraOutputSize.values().forEach { size ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = outputSize == size, onClick = { outputSize = size })
+                        Column {
+                            Text(size.label, style = MaterialTheme.typography.bodyMedium)
+                            Text(size.description, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                ElevatedCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Preview preparation", style = MaterialTheme.typography.labelMedium)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(132.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Outlined.AspectRatio, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Text(fitMode.previewHeadline(cropAnchor), style = MaterialTheme.typography.bodyMedium)
+                                Text(outputSize.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        Text("$targetCamera · ${fitMode.label} · ${outputSize.label}", style = MaterialTheme.typography.bodySmall)
+                        Text(fitMode.previewText, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Saved setup: ${fitMode.editingSummary(cropAnchor)}", style = MaterialTheme.typography.labelSmall)
+                        Button(
+                            onClick = { saveVideoFeedSetup() },
+                            enabled = selectedVideoUri != null,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(if (setupSaved) "Video Feed Setup Saved" else "Save Video Feed Setup")
+                        }
+                        if (selectedVideoUri == null) {
+                            Text(
+                                "Select a video first, then save these crop/resize settings for the LSPosed test flow.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -181,11 +307,11 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.VerifiedUser, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(8.dp))
-                    Text("3. LSPosed Integration Check", style = MaterialTheme.typography.titleSmall)
+                    Text("4. LSPosed Test Readiness", style = MaterialTheme.typography.titleSmall)
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "RootDeck packages the Video Test Feed module entry for LSPosed. Enable the RootDeck module inside LSPosed Manager and scope it only to your own test apps.",
+                    "Use this checklist after installing LSPosed. RootDeck can package the module entry and prepare your video source, but you still enable and scope the module in LSPosed Manager.",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Spacer(Modifier.height(12.dp))
@@ -193,6 +319,11 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
                 StatusRow("Video module entry", if (lsposedStatus.moduleEntryPackaged) "Packaged" else "Missing")
                 StatusRow("Selected video", selectedVideoLabel ?: "Not selected")
                 StatusRow("Target camera", targetCamera)
+                StatusRow("Fit mode", fitMode.label)
+                StatusRow("Crop / bars", fitMode.editingSummary(cropAnchor))
+                StatusRow("Output size", outputSize.label)
+                StatusRow("Editor setup", if (setupSaved) "Saved" else "Not saved")
+                StatusRow("Ready to test", if (lsposedStatus.managerInstalled && selectedVideoUri != null && setupSaved) "Yes — open your scoped test app" else "Not yet")
                 Spacer(Modifier.height(12.dp))
                 OutlinedButton(onClick = { lsposedStatus = readLsposedStatus(context) }) {
                     Text("Refresh LSPosed Status")
@@ -200,7 +331,7 @@ fun VideoTestFeedScreen(onBack: () -> Unit) {
                 if (!lsposedStatus.managerInstalled) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Install and enable LSPosed separately on the rooted test device. This app can detect the manager package, but Android apps cannot confirm every LSPosed scope/activation state without LSPosed-side support.",
+                        "LSPosed Manager was not detected yet. If you just installed LSPosed, reboot first, then open LSPosed Manager and enable RootDeck for your own test apps.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -238,6 +369,64 @@ private fun StatusRow(label: String, value: String) {
         Text(label, modifier = Modifier.weight(0.42f), style = MaterialTheme.typography.labelMedium)
         Text(value, modifier = Modifier.weight(0.58f), style = MaterialTheme.typography.bodySmall)
     }
+}
+
+private enum class VideoFitMode(
+    val label: String,
+    val description: String,
+    val previewText: String,
+) {
+    FitBlackBars(
+        "Fit with black bars",
+        "Shows the whole video and adds black bars if the shape is different.",
+        "Best when you do not want to crop anything from the original video.",
+    ),
+    FillCrop(
+        "Fill and crop edges",
+        "Fills the camera frame and crops the extra edges if needed.",
+        "Best when you want the video to look full-screen in the camera frame.",
+    ),
+    Stretch(
+        "Stretch to camera",
+        "Resizes the video to the camera shape even if it changes proportions.",
+        "Best only for quick tests where exact proportions do not matter.",
+    ),
+    MatchCamera(
+        "Match original camera output",
+        "Uses the chosen camera output size and preserves the camera feed shape.",
+        "Best default for camera compatibility testing.",
+    );
+
+    fun editingSummary(anchor: VideoCropAnchor): String = when (this) {
+        FitBlackBars -> "Preserve all video with black bars when needed"
+        FillCrop -> "Fill frame and keep ${anchor.label.lowercase()} crop area"
+        Stretch -> "Stretch video to exact camera frame"
+        MatchCamera -> "Resize to the camera output shape"
+    }
+
+    fun previewHeadline(anchor: VideoCropAnchor): String = when (this) {
+        FitBlackBars -> "Full video + black bars"
+        FillCrop -> "Filled frame · ${anchor.label} crop"
+        Stretch -> "Stretched to frame"
+        MatchCamera -> "Matched to camera output"
+    }
+}
+
+private enum class VideoCropAnchor(val label: String) {
+    Center("Center"),
+    Top("Top"),
+    Bottom("Bottom"),
+}
+
+private enum class CameraOutputSize(
+    val label: String,
+    val description: String,
+) {
+    MatchCamera("Auto: match camera", "Use the size reported by the selected front/back camera."),
+    Hd("HD 720p", "Prepare a 1280 × 720 landscape feed."),
+    FullHd("Full HD 1080p", "Prepare a 1920 × 1080 landscape feed."),
+    Square("Square", "Prepare a 1:1 feed for square video tests."),
+    Portrait("Portrait 9:16", "Prepare a vertical feed for portrait video tests."),
 }
 
 private data class LsposedStatus(

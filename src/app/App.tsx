@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { GITHUB_APK_URL, LSPOSED_ACTIONS_URL, LSPOSED_APK_URL, LSPOSED_RELEASE_API_URL } from "./config/download";
+import { CURRENT_APP_VERSION } from "./config/version";
 import {
   Activity,
   AlertTriangle,
@@ -271,14 +272,14 @@ export default function App() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-sm font-semibold text-emerald-100">RootDeck APK download</div>
+                    <div className="text-sm font-semibold text-emerald-100">RootDeck APK download · {CURRENT_APP_VERSION}</div>
                     <p className="mt-2 text-sm leading-6 text-slate-400">
-                      Main RootDeck Android 14+ app build from the stable RootDeck release asset.
+                      Updated RootDeck Android 14+ APK with guided root access, recommended LSPosed setup, download progress, and success instructions.
                     </p>
                   </div>
                   <Download className="size-5 shrink-0 text-emerald-300 transition group-hover:translate-y-0.5" />
                 </div>
-                <div className="mt-4 font-mono text-xs text-emerald-200/80">rootdeck-debug.apk</div>
+                <div className="mt-4 font-mono text-xs text-emerald-200/80">rootdeck-debug.apk · latest release</div>
               </a>
 
               <LsposedDownloadCard />

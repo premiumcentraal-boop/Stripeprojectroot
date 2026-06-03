@@ -15,6 +15,46 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: "v0.13.0",
+    name: "Video crop and resize editor",
+    date: "2026-06-03",
+    notes: [
+      "Added a friendlier Video Test Feed editor for black bars, center crop, stretch, and camera-output matching.",
+      "Added crop-position controls for fill/crop mode so users can choose center, top, or bottom framing.",
+      "Updated the LSPosed readiness summary to show the exact video fit, crop, and output-size setup before testing.",
+    ],
+  },
+  {
+    version: "v0.12.0",
+    name: "Video fit and crop controls",
+    date: "2026-06-03",
+    notes: [
+      "Added user-friendly Video Test Feed resize options: black bars, fill/crop, stretch, and match camera output.",
+      "Added camera output size presets for auto camera match, 720p, 1080p, square, and portrait feeds.",
+      "Shows a clear preview preparation summary before LSPosed video-feed testing.",
+    ],
+  },
+  {
+    version: "v0.11.0",
+    name: "LSPosed to Video Test Feed handoff",
+    date: "2026-06-03",
+    notes: [
+      "Added a direct handoff from successful LSPosed setup to Video Test Feed setup.",
+      "Improved Video Test Feed with a user-friendly LSPosed setup checklist and readiness status.",
+      "Clarified video file selection and front/back camera target steps for scoped user-owned test apps.",
+    ],
+  },
+  {
+    version: "v0.10.0",
+    name: "Recommended installs gallery",
+    date: "2026-06-03",
+    notes: [
+      "Improved first-run setup with a recommended installs gallery including LSPosed.",
+      "Added clearer LSPosed download/install success and failure states.",
+      "Added a visual next-step flow: download, install, reboot, enable.",
+    ],
+  },
+  {
     version: "v0.9.0",
     name: "Guided LSPosed setup flow",
     date: "2026-06-03",

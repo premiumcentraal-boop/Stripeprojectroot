@@ -12,8 +12,8 @@ android {
         applicationId = "com.rootdeck.app"
         minSdk = 34
         targetSdk = 34
-        versionCode = 9
-        versionName = "0.9.0"
+        versionCode = 13
+        versionName = "0.13.0"
     }
 
     buildTypes {
