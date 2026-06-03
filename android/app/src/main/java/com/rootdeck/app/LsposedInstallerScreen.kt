@@ -170,10 +170,11 @@ object LsposedInstaller {
         context: Context,
         repo: RootRepository,
         current: LsposedInstallState,
+        onProgress: (Float) -> Unit = {},
     ): LsposedInstallState = withContext(Dispatchers.IO) {
         val url = current.assetUrl ?: return@withContext current.copy(busy = false, error = "No LSPosed asset selected.")
         val out = File(context.getExternalFilesDir(null) ?: context.cacheDir, "lsposed-magisk-module.zip")
-        runCatching { download(url, out) }.getOrElse { error ->
+        runCatching { download(url, out, onProgress) }.getOrElse { error ->
             return@withContext current.copy(busy = false, error = "Download failed: ${error.message}")
         }
         val installCommand = "magisk --install-module '${out.absolutePath}'"
@@ -238,15 +239,27 @@ object LsposedInstaller {
         return name to (selected ?: error("No installable LSPosed zip asset was found in the latest release."))
     }
 
-    private fun download(url: String, out: File) {
+    private suspend fun download(url: String, out: File, onProgress: (Float) -> Unit) {
         val connection = URL(url).openConnection() as HttpURLConnection
         connection.instanceFollowRedirects = true
         connection.connectTimeout = 20_000
         connection.readTimeout = 60_000
         connection.setRequestProperty("User-Agent", "RootDeck")
+        val total = connection.contentLengthLong.takeIf { it > 0L }
+        var copied = 0L
         connection.inputStream.use { input ->
-            out.outputStream().use { output -> input.copyTo(output) }
+            out.outputStream().use { output ->
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    output.write(buffer, 0, read)
+                    copied += read
+                    if (total != null) withContext(Dispatchers.Main) { onProgress((copied.toFloat() / total.toFloat()).coerceIn(0f, 1f)) }
+                }
+            }
         }
+        withContext(Dispatchers.Main) { onProgress(1f) }
     }
 
     private fun httpGet(url: String): String {

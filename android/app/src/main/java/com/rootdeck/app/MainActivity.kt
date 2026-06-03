@@ -70,6 +70,7 @@ private fun RootDeckApp(
     // Top-level tab selection + the current sub-screen pushed on top of Tools.
     var tab by remember { mutableStateOf<Dest>(Dest.Dashboard) }
     var subscreen by remember { mutableStateOf<Dest?>(null) }
+    var setupFinishedForSession by remember { mutableStateOf(repo.rootMode.value == RootMode.ROOTDECK_ONLY) }
 
     fun navigateTool(tool: BasicTool) {
         subscreen = when (tool.id) {
@@ -102,8 +103,11 @@ private fun RootDeckApp(
         },
     ) { padding ->
         Surface(modifier = Modifier.fillMaxSize().padding(padding)) {
-            val current = subscreen ?: tab
-            when (current) {
+            if (!setupFinishedForSession && repo.rootMode.value != RootMode.ROOTDECK_ONLY) {
+                StartupSetupScreen(repo = repo, onFinish = { setupFinishedForSession = true })
+            } else {
+                val current = subscreen ?: tab
+                when (current) {
                 Dest.Dashboard -> DashboardScreen(
                     repo,
                     privacy,
@@ -140,7 +144,8 @@ private fun RootDeckApp(
                 Dest.VideoTestFeed -> VideoTestFeedScreen(onBack = { subscreen = null })
                 Dest.LsposedInstaller -> LsposedInstallerScreen(repo, onBack = { subscreen = null })
                 is Dest.Planned -> PlannedToolScreen(current.tool, onBack = { subscreen = null })
-                is Dest.PlannedModule -> PlannedBasicToolDetailScreen(current.tool, onBack = { subscreen = null })
+                    is Dest.PlannedModule -> PlannedBasicToolDetailScreen(current.tool, onBack = { subscreen = null })
+                }
             }
         }
     }

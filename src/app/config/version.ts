@@ -15,6 +15,16 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: "v0.9.0",
+    name: "Guided LSPosed setup flow",
+    date: "2026-06-03",
+    notes: [
+      "Added a first-run setup flow that asks for RootDeck root access in simple language.",
+      "Shows recommended installations with LSPosed as an install option after a loading scan.",
+      "Adds download progress, install progress messaging, and a clear success/reboot instruction screen.",
+    ],
+  },
+  {
     version: "v0.8.0",
     name: "LSPosed Installer",
     date: "2026-06-03",
