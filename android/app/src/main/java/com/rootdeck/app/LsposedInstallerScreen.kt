@@ -347,7 +347,7 @@ object LsposedInstaller {
         done.await()
     }
 
-    private fun isZygiskEnabled(): Boolean {
+    private suspend fun isZygiskEnabled(): Boolean {
         val result = RootShell.runRootCommand(
             "magisk --sqlite \"SELECT value FROM settings WHERE key='zygisk';\" 2>/dev/null",
             timeoutSeconds = 8,
